@@ -1,0 +1,25 @@
+{
+  "name": "pictionary-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FMcIntosh/pictionary-game.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FMcIntosh/pictionary-game/issues"
+  },
+  "homepage": "https://github.com/FMcIntosh/pictionary-game#readme",
+  "dependencies": {
+    "pusher": "^3.0.0"
+  },
+  "devDependencies": {
+    "@now/node": "^1.5.0"
+  }
+}

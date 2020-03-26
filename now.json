@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "env": {
+    "APP_ID": "@pictionary-game-channels-app-id",
+    "KEY": "3a40fa337322e97d8d0c",
+    "SECRET": "@pictionary-game-channels-app-secret",
+    "CLUSTER": "ap4"
+  }
+}
