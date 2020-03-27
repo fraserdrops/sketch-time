@@ -4,6 +4,9 @@
   "description": "",
   "main": "main.js",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -17,7 +20,11 @@
   },
   "homepage": "https://github.com/FMcIntosh/pictionary-game#readme",
   "dependencies": {
-    "pusher": "^3.0.0"
+    "next": "^9.3.2",
+    "pusher": "^3.0.0",
+    "pusher-js": "^5.1.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
   },
   "devDependencies": {
     "@now/node": "^1.5.0"
