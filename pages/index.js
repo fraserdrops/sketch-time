@@ -14,8 +14,6 @@ const App = props => {
   const hostGameID = getRandomInt(1000, 9999);
   const createGame = () => {
     setIsHost(true);
-
-    console.log(getRandomInt(1000, 9999));
   };
 
   return (
@@ -24,12 +22,15 @@ const App = props => {
         <h1>Pictionary - Covid19 Edition</h1>
 
         <button onClick={() => createGame()}>
-          <Link href='/lobby?host=true'>
+          <Link href={`/lobby?host=true&gameID=${hostGameID}`}>
             <a>Create Game</a>
           </Link>
         </button>
         <h4>Join Game</h4>
         <input value={gameID} onChange={e => setGameID(e.target.value)} />
+        <Link href={`/lobby?gameID=${gameID}`}>
+          <a>Join Game</a>
+        </Link>
       </div>
     </div>
   );

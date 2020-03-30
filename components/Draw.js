@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import Colors from '../components/Colors';
 
 const Draw = props => {
+  const { allowDrawing } = props;
   const [color, setColor] = useState('black');
   const canvasRef = useRef();
 
@@ -119,23 +120,22 @@ const Draw = props => {
         }
       };
     }
+    if (allowDrawing) {
+      canvas.addEventListener('mousedown', onMouseDown, false);
+      canvas.addEventListener('mouseup', onMouseUp, false);
+      canvas.addEventListener('mouseout', onMouseUp, false);
+      canvas.addEventListener('mousemove', throttle(onMouseMove, 20), false);
 
-    canvas.addEventListener('mousedown', onMouseDown, false);
-    canvas.addEventListener('mouseup', onMouseUp, false);
-    canvas.addEventListener('mouseout', onMouseUp, false);
-    canvas.addEventListener('mousemove', throttle(onMouseMove, 20), false);
-
-    canvas.addEventListener('touchstart', onMouseDown, false);
-    canvas.addEventListener('touchend', onMouseUp, false);
-    canvas.addEventListener('touchcancel', onMouseUp, false);
-    canvas.addEventListener('touchmove', throttle(onMouseMove, 20), false);
-  }, []);
+      canvas.addEventListener('touchstart', onMouseDown, false);
+      canvas.addEventListener('touchend', onMouseUp, false);
+      canvas.addEventListener('touchcancel', onMouseUp, false);
+      canvas.addEventListener('touchmove', throttle(onMouseMove, 20), false);
+    }
+  }, [allowDrawing]);
 
   return (
     <div className='App'>
-      <header className='App-header'>
-        <Colors setColor={setColor} />
-      </header>
+      <header className='App-header'>{allowDrawing && <Colors setColor={setColor} />}</header>
       <section>
         <canvas ref={canvasRef} />
       </section>

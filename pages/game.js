@@ -1,34 +1,40 @@
 import Pusher from 'pusher-js';
-import { useEffect, useState, useContext } from 'react';
-import { v4 as uuid } from 'uuid';
+import { useEffect, useState, useContext, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { GameContext } from './_app';
 import Draw from '../components/Draw';
 
-const App = props => {
+const wordList = ['pizza', 'pasta', 'meatballs'];
+
+const Game = props => {
   const router = useRouter();
   const host = router.query.host;
+  const gameID = router.query.gameID;
 
   const { gameState, setGameState, userID } = useContext(GameContext);
   const [hostState, setHostState] = useState(gameState);
+  const hostStateRef = useRef(hostState);
 
+  useEffect(() => {
+    hostStateRef.current = hostState;
+  }, [hostState]);
   // start game
   useEffect(() => {
     const players = Object.keys(gameState.teams);
-    let currentPlayer = undefined;
-    players.forEach(player => {
-      if (gameState.teams[player] === 'Team 1') {
-        currentPlayer = player;
-      }
-    });
+    const team1 = players.filter(userID => gameState.teams[userID] === 'Team 1');
+    const team2 = players.filter(userID => gameState.teams[userID] === 'Team 2');
+
     const playState = {
       // first player in team 1
-      currentPlayer,
+      currentPlayer: team1[0],
       currentTeam: 'Team 1',
-      previous: {
-        team1: undefined,
-        team2: undefined
-      }
+      playOrder: {
+        team1,
+        team2,
+        previousTeam1Player: undefined,
+        previousTeam2Player: undefined
+      },
+      word: 'pizza'
     };
     setHostState(hostState => ({ ...hostState, playState }));
   }, []);
@@ -41,18 +47,64 @@ const App = props => {
         cluster: 'ap4',
         forceTLS: true
       });
-      const channel = pusher.subscribe('host-events');
-      channel.bind('endTurn', async ({ team, userID }) => {
-        setHostState(hostState => ({ ...hostState, teams: { ...hostState.teams, [userID]: team } }));
-      });
+      const channel = pusher.subscribe(`${gameID}-host-events`);
+      channel.bind(
+        'endTurn',
+        async function() {
+          const { currentPlayer, currentTeam, playOrder } = this.current.playState;
+          const newPlayState = {};
+          const newPlayOrder = { ...playOrder };
+
+          // this allows for coop if all players join team 1
+          const playersInTeam2 = Object.values(this.current.teams).includes('Team 2');
+          if (currentTeam === 'Team 1' && playersInTeam2) {
+            newPlayState.currentTeam = 'Team 2';
+            let nextTeam2Player;
+            const lastTeam2Player = playOrder.previousTeam2Player;
+            newPlayOrder.previousTeam1Player = currentPlayer;
+            if (lastTeam2Player) {
+              const lastTeam2PlayerIndex = playOrder.team2.indexOf(lastTeam2Player);
+
+              const nextTeam2PlayerIndex =
+                lastTeam2PlayerIndex + 1 < playOrder.team2.length ? lastTeam2PlayerIndex + 1 : 0;
+              nextTeam2Player = playOrder.team2[nextTeam2PlayerIndex];
+            } else {
+              nextTeam2Player = playOrder.team2[0];
+            }
+            newPlayState.currentPlayer = nextTeam2Player;
+          } else {
+            newPlayState.currentTeam = 'Team 1';
+            let nextTeam1Player;
+            newPlayOrder.previousTeam2Player = currentPlayer;
+            const lastTeam1Player = playOrder.previousTeam1Player;
+            if (lastTeam1Player) {
+              const lastTeam1PlayerIndex = playOrder.team1.indexOf(lastTeam1Player);
+
+              const nextTeam1PlayerIndex =
+                lastTeam1PlayerIndex + 1 < playOrder.team1.length ? lastTeam1PlayerIndex + 1 : 0;
+              nextTeam1Player = playOrder.team1[nextTeam1PlayerIndex];
+            } else {
+              nextTeam1Player = playOrder.team1[0];
+            }
+            newPlayState.currentPlayer = nextTeam1Player;
+          }
+
+          newPlayState.playOrder = newPlayOrder;
+          newPlayState.word = wordList[Math.floor(Math.random() * wordList.length)];
+
+          setHostState(hostState => ({ ...hostState, playState: newPlayState }));
+        },
+        hostStateRef
+      );
     }
-  }, [host]);
+  }, [host, gameID, hostState]);
 
   // host update game state
   useEffect(() => {
     const handleGameStateChange = async () => {
       if (host) {
         const payload = {
+          gameID,
           gameState: hostState,
           eventType: 'updateGameState'
         };
@@ -70,7 +122,7 @@ const App = props => {
     };
 
     handleGameStateChange();
-  }, [host, hostState]);
+  }, [host, hostState, gameID]);
 
   // game events
   useEffect(() => {
@@ -78,18 +130,16 @@ const App = props => {
       cluster: 'ap4',
       forceTLS: true
     });
-    const channel = pusher.subscribe('game-events');
+    const channel = pusher.subscribe(`${gameID}-game-events`);
     channel.bind('updateGameState', ({ gameState }) => {
-      console.log('updating', gameState);
       setGameState(gameState);
     });
-  }, [setGameState]);
+  }, [setGameState, gameID]);
 
-  const handleEndTurn = async team => {
+  const handleEndTurn = async () => {
     const payload = {
-      userID,
-      team,
-      eventType: 'changeTeam'
+      gameID,
+      eventType: 'endTurn'
     };
     const res = await fetch('/api/host', {
       method: 'POST',
@@ -103,24 +153,24 @@ const App = props => {
     }
   };
 
-  const { teams } = gameState;
-  console.log(gameState);
   return (
     <div className='App'>
       <header className='App-header'>
-        {gameState.teams[userID] === gameState.playState.currentTeam && (
-          <Draw allowDrawing={userID === gameState.playState.currentPlayer} />
-        )}
-        <h2>{host ? 'Host' : 'Not Host'}</h2>
-
-        <h2>
-          {gameState.teams[userID] === gameState.playState.currentTeam
-            ? 'your team is playing'
-            : 'your team is not playing'}
-        </h2>
+        <div style={{ position: 'absolute', top: 0, left: 400 }}>
+          {userID === gameState.playState.currentPlayer && <p>Draw {gameState.playState.word}</p>}
+          <p>My userId: {userID}</p>
+          <p>is Drawing: {gameState.playState.currentPlayer}</p>
+          {gameState.teams[userID] !== gameState.playState.currentTeam && (
+            <p>
+              {userID} is Drawing {gameState.playState.word}
+            </p>
+          )}
+          <button onClick={handleEndTurn}>End Turn</button>
+        </div>
+        <Draw allowDrawing={userID === gameState.playState.currentPlayer} />
       </header>
     </div>
   );
 };
 
-export default App;
+export default Game;

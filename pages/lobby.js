@@ -7,6 +7,7 @@ import Link from 'next/link';
 const App = props => {
   const router = useRouter();
   const host = router.query.host;
+  const gameID = router.query.gameID;
 
   const { gameState, setGameState, userID } = useContext(GameContext);
   const [hostState, setHostState] = useState(gameState);
@@ -18,12 +19,12 @@ const App = props => {
         cluster: 'ap4',
         forceTLS: true
       });
-      const channel = pusher.subscribe('host-events');
+      const channel = pusher.subscribe(`${gameID}-host-events`);
       channel.bind('changeTeam', async ({ team, userID }) => {
         setHostState(hostState => ({ ...hostState, teams: { ...hostState.teams, [userID]: team } }));
       });
     }
-  }, [host]);
+  }, [host, gameID]);
 
   // host update game state
   // broadcast to other players
@@ -31,6 +32,7 @@ const App = props => {
     const handleGameStateChange = async () => {
       if (host) {
         const payload = {
+          gameID,
           gameState: hostState,
           eventType: 'updateGameState'
         };
@@ -48,7 +50,7 @@ const App = props => {
     };
 
     handleGameStateChange();
-  }, [host, hostState]);
+  }, [host, hostState, gameID]);
 
   // game events
   useEffect(() => {
@@ -56,17 +58,16 @@ const App = props => {
       cluster: 'ap4',
       forceTLS: true
     });
-    const channel = pusher.subscribe('game-events');
+    const channel = pusher.subscribe(`${gameID}-game-events`);
     channel.bind('updateGameState', ({ gameState }) => {
-      console.log('updating', gameState);
       setGameState(gameState);
     });
-  }, [setGameState]);
+  }, [setGameState, gameID]);
 
   const handleChangeTeam = async team => {
-    console.log(userID);
     const payload = {
       userID,
+      gameID,
       team,
       eventType: 'changeTeam'
     };
@@ -107,7 +108,7 @@ const App = props => {
   return (
     <div className='App'>
       <header className='App-header'>
-        <h1 className='App-title'>Game Lobby</h1>
+        <h1 className='App-title'>Game Lobby {gameID}</h1>
         <h2>{host ? 'Host' : 'Not Host'}</h2>
       </header>
       <section>
@@ -139,13 +140,13 @@ const App = props => {
         </div>
         {host && (
           <button onClick={() => handleStartGame()}>
-            <Link href='/game?host=true'>
+            <Link href={`/game?host=true&gameID=${gameID}`}>
               <a>Create Game</a>
             </Link>
           </button>
         )}
         <button>
-          <Link href='/game'>
+          <Link href={`/game?gameID=${gameID}`}>
             <a>Start Game</a>
           </Link>
         </button>

@@ -10,10 +10,9 @@ const pusher = new Pusher({
 });
 
 module.exports = async (req, res) => {
-  console.log('game', req.body);
   try {
     await new Promise((resolve, reject) => {
-      pusher.trigger('game-events', req.body.eventType, req.body, err => {
+      pusher.trigger(`${req.body.gameID}-game-events`, req.body.eventType, req.body, err => {
         if (err) return reject(err);
         resolve();
       });
