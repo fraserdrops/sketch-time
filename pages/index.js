@@ -1,55 +1,36 @@
-import ChatList from '../components/ChatList';
-import ChatBox from '../components/ChatBox';
 import Pusher from 'pusher-js';
+import { useEffect, useState, useRef } from 'react';
 import Colors from '../components/Colors';
-import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 const App = props => {
-  const [text, setText] = useState('');
-  const [chats, setChats] = useState([]);
-  const username = 'Anonymous';
+  const [gameID, setGameID] = useState('');
+  const [isHost, setIsHost] = useState(false);
+  function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+  const hostGameID = getRandomInt(1000, 9999);
+  const createGame = () => {
+    setIsHost(true);
 
-  useEffect(() => {
-    let pusher = new Pusher('3a40fa337322e97d8d0c', {
-      cluster: 'ap4',
-      forceTLS: true
-    });
-    const channel = pusher.subscribe('chat');
-    channel.bind('message', data => {
-      setChats(chats => [...chats, data]);
-    });
-  }, []);
-
-  const handleTextChange = async e => {
-    if (e.keyCode === 13) {
-      const payload = {
-        username: username,
-        message: text
-      };
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        console.error('event not sent');
-      }
-    } else {
-      setText(e.target.value);
-    }
+    console.log(getRandomInt(1000, 9999));
   };
+
   return (
     <div className='App'>
-      <header className='App-header'>
-        <Colors />
-        <h1 className='App-title'>Welcome to React-Pusher Chat</h1>
-      </header>
-      <section>
-        <ChatList chats={chats} />
-        <ChatBox text={text} username={username} handleTextChange={handleTextChange} />
-      </section>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h1>Pictionary - Covid19 Edition</h1>
+
+        <button onClick={() => createGame()}>
+          <Link href='/lobby?host=true'>
+            <a>Create Game</a>
+          </Link>
+        </button>
+        <h4>Join Game</h4>
+        <input value={gameID} onChange={e => setGameID(e.target.value)} />
+      </div>
     </div>
   );
 };
