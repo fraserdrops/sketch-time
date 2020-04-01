@@ -1,7 +1,5 @@
-import Pusher from 'pusher-js';
-import { useEffect, useState, useRef } from 'react';
-import Colors from '../components/Colors';
 import Link from 'next/link';
+import { useState } from 'react';
 
 const App = props => {
   const [gameID, setGameID] = useState('');

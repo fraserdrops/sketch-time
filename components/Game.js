@@ -1,12 +1,11 @@
-import Pusher from 'pusher-js';
 import { useEffect, useState, useContext, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { GameContext } from './_app';
+import { GameContext } from '../pages/_app';
 import Draw from '../components/Draw';
-
-const wordList = ['pizza', 'pasta', 'meatballs'];
+import wordList from '../data/medium1';
 
 const Game = props => {
+  const { pusher } = props;
   const router = useRouter();
   const host = router.query.host;
   const gameID = router.query.gameID;
@@ -14,7 +13,7 @@ const Game = props => {
   const { gameState, setGameState, userID } = useContext(GameContext);
   const [hostState, setHostState] = useState(gameState);
   const hostStateRef = useRef(hostState);
-
+  console.log('render');
   useEffect(() => {
     hostStateRef.current = hostState;
   }, [hostState]);
@@ -43,10 +42,6 @@ const Game = props => {
   // this is where the new game state is created
   useEffect(() => {
     if (host) {
-      let pusher = new Pusher('3a40fa337322e97d8d0c', {
-        cluster: 'ap4',
-        forceTLS: true
-      });
       const channel = pusher.subscribe(`${gameID}-host-events`);
       channel.bind(
         'endTurn',
@@ -97,7 +92,7 @@ const Game = props => {
         hostStateRef
       );
     }
-  }, [host, gameID, hostState]);
+  }, [host, gameID, pusher]);
 
   // host update game state
   useEffect(() => {
@@ -126,15 +121,11 @@ const Game = props => {
 
   // game events
   useEffect(() => {
-    let pusher = new Pusher('3a40fa337322e97d8d0c', {
-      cluster: 'ap4',
-      forceTLS: true
-    });
     const channel = pusher.subscribe(`${gameID}-game-events`);
     channel.bind('updateGameState', ({ gameState }) => {
       setGameState(gameState);
     });
-  }, [setGameState, gameID]);
+  }, [setGameState, gameID, pusher]);
 
   const handleEndTurn = async () => {
     const payload = {
@@ -157,9 +148,9 @@ const Game = props => {
     <div className='App'>
       <header className='App-header'>
         <div style={{ position: 'absolute', top: 0, left: 400 }}>
-          {userID === gameState.playState.currentPlayer && <p>Draw {gameState.playState.word}</p>}
-          <p>My userId: {userID}</p>
-          <p>is Drawing: {gameState.playState.currentPlayer}</p>
+          {userID === gameState.playState.currentPlayer && <p>You're Up! Draw {gameState.playState.word}</p>}
+          {userID !== gameState.playState.currentPlayer &&
+            gameState.teams[userID] === gameState.playState.currentTeam && <p>You're Up! Guess what the word is</p>}
           {gameState.teams[userID] !== gameState.playState.currentTeam && (
             <p>
               {userID} is Drawing {gameState.playState.word}
@@ -167,7 +158,7 @@ const Game = props => {
           )}
           <button onClick={handleEndTurn}>End Turn</button>
         </div>
-        <Draw allowDrawing={userID === gameState.playState.currentPlayer} />
+        <Draw allowDrawing={userID === gameState.playState.currentPlayer} pusher={pusher} />
       </header>
     </div>
   );

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import Colors from '../components/Colors';
 
 const Draw = props => {
+  const { pusher } = props;
   const { allowDrawing } = props;
   const [color, setColor] = useState('black');
   const canvasRef = useRef();
@@ -10,11 +11,6 @@ const Draw = props => {
   useEffect(() => {}, []);
 
   useEffect(() => {
-    let pusher = new Pusher('3a40fa337322e97d8d0c', {
-      cluster: 'ap4',
-      forceTLS: true
-    });
-
     const canvas = canvasRef.current;
     let drawing = false;
 
@@ -131,11 +127,11 @@ const Draw = props => {
       canvas.addEventListener('touchcancel', onMouseUp, false);
       canvas.addEventListener('touchmove', throttle(onMouseMove, 20), false);
     }
-  }, [allowDrawing]);
+  }, [allowDrawing, pusher]);
 
   return (
     <div className='App'>
-      <header className='App-header'>{allowDrawing && <Colors setColor={setColor} />}</header>
+      {/* <header className='App-header'>{allowDrawing && <Colors setColor={setColor} />}</header> */}
       <section>
         <canvas ref={canvasRef} />
       </section>
