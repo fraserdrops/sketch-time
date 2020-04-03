@@ -1,7 +1,6 @@
-import Pusher from 'pusher-js';
-import { useEffect, useState, useContext } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { useContext, useEffect, useState } from 'react';
 import { GameContext } from '../pages/_app';
 
 const App = props => {
@@ -12,13 +11,17 @@ const App = props => {
 
   const { gameState, setGameState, userID } = useContext(GameContext);
   const [hostState, setHostState] = useState(gameState);
-
+  const username = gameState.username;
   // host events
   useEffect(() => {
     if (host) {
       const channel = pusher.subscribe(`${gameID}-host-events`);
       channel.bind('changeTeam', async ({ team, userID }) => {
         setHostState(hostState => ({ ...hostState, teams: { ...hostState.teams, [userID]: team } }));
+      });
+
+      channel.bind('joinGame', async ({ userID, username }) => {
+        setHostState(hostState => ({ ...hostState, players: { ...hostState.players, [userID]: username } }));
       });
     }
   }, [host, gameID, pusher]);
@@ -76,6 +79,29 @@ const App = props => {
     }
   };
 
+  useEffect(() => {
+    const joinGame = async () => {
+      const payload = {
+        userID,
+        username,
+        gameID,
+        eventType: 'joinGame'
+      };
+      const res = await fetch('/api/host', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        console.error('event not sent');
+      }
+    };
+
+    joinGame();
+  }, []);
+
   // host only
   const handleStartGame = () => {
     setHostState(hostState => ({ ...hostState, gameStatus: 'game' }));
@@ -102,49 +128,39 @@ const App = props => {
   return (
     <div className='App'>
       <header className='App-header'>
-        <h1 className='App-title'>Game Lobby {gameID}</h1>
-        <h2>{host ? 'Host' : 'Not Host'}</h2>
+        <h2 className='App-title'>Game Lobby {gameID}</h2>
       </header>
       <section>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h4>Team 1</h4>
+          <h4 style={{ margin: 0 }}>Team 1</h4>
           {Object.keys(teams)
             .filter(userID => teams[userID] === 'Team 1')
             .map(userID => (
-              <p>{userID}</p>
+              <p>{gameState.players[userID]}</p>
             ))}
           <button onClick={() => handleChangeTeam('Team 1')}>Join Team 1</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h4>Team 2</h4>
+          <h4 style={{ margin: 0 }}>Team 2</h4>
           {Object.keys(teams)
             .filter(userID => teams[userID] === 'Team 2')
             .map(userID => (
-              <p>{userID}</p>
+              <p>{gameState.players[userID]}</p>
             ))}
           <button onClick={() => handleChangeTeam('Team 2')}>Join Team 2</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h4>Unsassigned</h4>
-          {Object.keys(teams)
+          <h4 style={{ margin: 0 }}>Unsassigned</h4>
+          {Object.keys(gameState.players)
             .filter(userID => !teams[userID])
             .map(userID => (
-              <p>{userID}</p>
+              <p>{gameState.players[userID]}</p>
             ))}
         </div>
-        {host && (
-          <button onClick={() => handleStartGame()}>
-            Create Game
-            {/* <Link href={`/game?host=true&gameID=${gameID}`}>
-              <a>Create Game</a>
-            </Link> */}
-          </button>
-        )}
-        <button>
-          <Link href={`/game?gameID=${gameID}`}>
-            <a>Start Game</a>
-          </Link>
-        </button>
+        {host && <button onClick={() => handleStartGame()}>Create Game</button>}
+        <Link href={`/`}>
+          <a>Home</a>
+        </Link>
       </section>
     </div>
   );

@@ -1,0 +1,9 @@
+body {
+  margin: 0;
+  position: fixed;
+  overscroll-behavior: contain;
+}
+
+.App {
+  overflow-y: none;
+}

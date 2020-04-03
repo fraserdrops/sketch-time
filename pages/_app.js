@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 import Pusher from 'pusher-js';
+import '../styles.css';
 
 // import App from 'next/app'
 export const GameContext = React.createContext();
@@ -11,15 +12,61 @@ let pusher = new Pusher('3a40fa337322e97d8d0c', {
 
 function MyApp({ Component, pageProps }) {
   const [userID] = useState(uuid());
-  console.log(userID);
+  const ref = useRef();
+
   const [gameState, setGameState] = useState({
     gameStatus: 'lobby',
+    players: {},
     teams: {},
-    playState: { currentPlayer: undefined, currentTeam: undefined }
+    playState: { currentPlayer: undefined, currentTeam: undefined },
+    username: ''
   });
+
+  useEffect(() => {
+    if (window) require('inobounce');
+
+    function preventPullToRefresh(element) {
+      var prevent = false;
+
+      element.addEventListener(
+        'touchstart',
+        function(e) {
+          if (e.touches.length !== 1) {
+            return;
+          }
+
+          var scrollY = window.pageYOffset || document.body.scrollTop || document.documentElement.scrollTop;
+          prevent = scrollY === 0;
+        },
+        { passive: false }
+      );
+
+      element.addEventListener(
+        'touchmove',
+        function(e) {
+          if (prevent) {
+            prevent = false;
+            e.preventDefault();
+          }
+        },
+        { passive: false }
+      );
+    }
+
+    preventPullToRefresh(ref.current);
+  }, []);
   return (
     <GameContext.Provider value={{ gameState, setGameState, userID }}>
-      <Component {...pageProps} pusher={pusher} />
+      <div
+        ref={ref}
+        style={{
+          height: '100vh',
+          WebkitOverflowScrolling: 'touch',
+          overflowY: 'auto'
+        }}
+      >
+        <Component {...pageProps} pusher={pusher} />
+      </div>
     </GameContext.Provider>
   );
 }

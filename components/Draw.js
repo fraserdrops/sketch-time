@@ -71,7 +71,7 @@ const Draw = props => {
     function onMouseDown(e) {
       drawing = true;
       current.x = e.clientX || e.touches[0].clientX;
-      current.y = e.clientY || e.toches[0].clientY;
+      current.y = e.clientY || e.touches[0].clientY;
     }
 
     function onMouseUp(e) {
@@ -79,14 +79,16 @@ const Draw = props => {
         return;
       }
       drawing = false;
-      drawLine(
-        current.x,
-        e.clientX || e.touches[0].clientX,
-        current.y,
-        e.clientY || e.touches[0].clientY,
-        current.color,
-        true
-      );
+      if (e.clientX || e.touches[0]) {
+        drawLine(
+          current.x,
+          e.clientX || e.touches[0].clientX,
+          current.y,
+          e.clientY || e.touches[0].clientY,
+          current.color,
+          true
+        );
+      }
     }
 
     function onMouseMove(e) {
@@ -130,11 +132,9 @@ const Draw = props => {
   }, [allowDrawing, pusher]);
 
   return (
-    <div className='App'>
+    <div style={{ width: '100%', height: '100vh' }}>
       {/* <header className='App-header'>{allowDrawing && <Colors setColor={setColor} />}</header> */}
-      <section>
-        <canvas ref={canvasRef} />
-      </section>
+      <canvas ref={canvasRef} style={{ width: window.innerWidth, border: '1px solid black' }} />
     </div>
   );
 };

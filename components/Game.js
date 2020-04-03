@@ -13,7 +13,6 @@ const Game = props => {
   const { gameState, setGameState, userID } = useContext(GameContext);
   const [hostState, setHostState] = useState(gameState);
   const hostStateRef = useRef(hostState);
-  console.log('render');
   useEffect(() => {
     hostStateRef.current = hostState;
   }, [hostState]);
@@ -22,7 +21,6 @@ const Game = props => {
     const players = Object.keys(gameState.teams);
     const team1 = players.filter(userID => gameState.teams[userID] === 'Team 1');
     const team2 = players.filter(userID => gameState.teams[userID] === 'Team 2');
-
     const playState = {
       // first player in team 1
       currentPlayer: team1[0],
@@ -37,7 +35,6 @@ const Game = props => {
     };
     setHostState(hostState => ({ ...hostState, playState }));
   }, []);
-
   // host events
   // this is where the new game state is created
   useEffect(() => {
@@ -145,21 +142,19 @@ const Game = props => {
   };
 
   return (
-    <div className='App'>
-      <header className='App-header'>
-        <div style={{ position: 'absolute', top: 0, left: 400 }}>
-          {userID === gameState.playState.currentPlayer && <p>You're Up! Draw {gameState.playState.word}</p>}
-          {userID !== gameState.playState.currentPlayer &&
-            gameState.teams[userID] === gameState.playState.currentTeam && <p>You're Up! Guess what the word is</p>}
-          {gameState.teams[userID] !== gameState.playState.currentTeam && (
-            <p>
-              {userID} is Drawing {gameState.playState.word}
-            </p>
-          )}
-          <button onClick={handleEndTurn}>End Turn</button>
-        </div>
-        <Draw allowDrawing={userID === gameState.playState.currentPlayer} pusher={pusher} />
-      </header>
+    <div style={{ width: '100%', height: '100vh' }}>
+      {/* <div style={{ position: 'absolute', top: 0, left: 400 }}>
+        {userID === gameState.playState.currentPlayer && <p>You're Up! Draw {gameState.playState.word}</p>}
+        {userID !== gameState.playState.currentPlayer &&
+          gameState.teams[userID] === gameState.playState.currentTeam && <p>You're Up! Guess what the word is</p>}
+        {gameState.teams[userID] !== gameState.playState.currentTeam && (
+          <p>
+            {gameState.players[userID]} is Drawing {gameState.playState.word}
+          </p>
+        )}
+        <button onClick={handleEndTurn}>End Turn</button>
+      </div> */}
+      <Draw allowDrawing={userID === gameState.playState.currentPlayer} pusher={pusher} />
     </div>
   );
 };
