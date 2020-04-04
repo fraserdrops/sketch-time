@@ -1,14 +1,17 @@
-import Pusher from 'pusher-js';
 import { useEffect, useState, useRef } from 'react';
-import Colors from '../components/Colors';
 
 const Draw = props => {
-  const { pusher } = props;
+  const { pusher, drawerID } = props;
   const { allowDrawing } = props;
   const [color, setColor] = useState('black');
   const canvasRef = useRef();
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    const context = canvasRef.current.getContext('2d');
+    if (drawerID) {
+      context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    }
+  }, [drawerID]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -118,17 +121,15 @@ const Draw = props => {
         }
       };
     }
-    if (allowDrawing) {
-      canvas.addEventListener('mousedown', onMouseDown, false);
-      canvas.addEventListener('mouseup', onMouseUp, false);
-      canvas.addEventListener('mouseout', onMouseUp, false);
-      canvas.addEventListener('mousemove', throttle(onMouseMove, 20), false);
+    canvas.addEventListener('mousedown', onMouseDown, true);
+    canvas.addEventListener('mouseup', onMouseUp, true);
+    canvas.addEventListener('mouseout', onMouseUp, true);
+    canvas.addEventListener('mousemove', throttle(onMouseMove, 20), true);
 
-      canvas.addEventListener('touchstart', onMouseDown, false);
-      canvas.addEventListener('touchend', onMouseUp, false);
-      canvas.addEventListener('touchcancel', onMouseUp, false);
-      canvas.addEventListener('touchmove', throttle(onMouseMove, 20), false);
-    }
+    canvas.addEventListener('touchstart', onMouseDown, true);
+    canvas.addEventListener('touchend', onMouseUp, true);
+    canvas.addEventListener('touchcancel', onMouseUp, true);
+    canvas.addEventListener('touchmove', throttle(onMouseMove, 20), true);
   }, [allowDrawing, pusher]);
 
   return (

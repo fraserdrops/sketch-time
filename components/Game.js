@@ -31,7 +31,7 @@ const Game = props => {
         previousTeam1Player: undefined,
         previousTeam2Player: undefined
       },
-      word: 'pizza'
+      word: wordList[Math.floor(Math.random() * wordList.length)]
     };
     setHostState(hostState => ({ ...hostState, playState }));
   }, []);
@@ -140,21 +140,26 @@ const Game = props => {
       console.error('event not sent');
     }
   };
-
+  const allowDrawing = userID === gameState.playState.currentPlayer;
   return (
     <div style={{ width: '100%', height: '100vh' }}>
-      {/* <div style={{ position: 'absolute', top: 0, left: 400 }}>
+      <div style={{ position: 'absolute', top: 0, left: 0 }}>
         {userID === gameState.playState.currentPlayer && <p>You're Up! Draw {gameState.playState.word}</p>}
         {userID !== gameState.playState.currentPlayer &&
           gameState.teams[userID] === gameState.playState.currentTeam && <p>You're Up! Guess what the word is</p>}
         {gameState.teams[userID] !== gameState.playState.currentTeam && (
           <p>
-            {gameState.players[userID]} is Drawing {gameState.playState.word}
+            {gameState.players[gameState.playState.currentPlayer]} is Drawing {gameState.playState.word}
           </p>
         )}
         <button onClick={handleEndTurn}>End Turn</button>
-      </div> */}
-      <Draw allowDrawing={userID === gameState.playState.currentPlayer} pusher={pusher} />
+      </div>
+      {allowDrawing && (
+        <Draw allowDrawing={allowDrawing} pusher={pusher} drawerID={gameState.playState.currentPlayer} />
+      )}
+      {!allowDrawing && (
+        <Draw allowDrawing={allowDrawing} pusher={pusher} drawerID={gameState.playState.currentPlayer} />
+      )}
     </div>
   );
 };

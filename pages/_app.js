@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 import Pusher from 'pusher-js';
 import '../styles.css';
+import Head from 'next/head';
 
 // import App from 'next/app'
 export const GameContext = React.createContext();
@@ -65,6 +66,13 @@ function MyApp({ Component, pageProps }) {
           overflowY: 'auto'
         }}
       >
+        <Head>
+          <meta
+            name='viewport'
+            content='width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=0'
+            key='viewport'
+          />
+        </Head>
         <Component {...pageProps} pusher={pusher} />
       </div>
     </GameContext.Provider>

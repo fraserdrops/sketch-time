@@ -99,7 +99,8 @@ const App = props => {
       }
     };
 
-    joinGame();
+    // hack to make sure the subscription is set up
+    setTimeout(() => joinGame(), [1000]);
   }, []);
 
   // host only
@@ -124,7 +125,7 @@ const App = props => {
     // setHostState(hostState => ({ ...hostState, playState }));
   };
 
-  const { teams } = gameState;
+  const { teams, players } = gameState;
   return (
     <div className='App'>
       <header className='App-header'>
