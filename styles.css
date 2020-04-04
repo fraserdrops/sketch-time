@@ -2,8 +2,22 @@ body {
   margin: 0;
   position: fixed;
   overscroll-behavior: contain;
+  font-family: 'Rubik', sans-serif;
 }
 
 .App {
   overflow-y: none;
+}
+
+button a {
+  color: unset;
+  text-decoration: unset;
+}
+
+button {
+  border: none;
+  padding: 5px;
+  border-radius: 2px;
+  color: white;
+  background: #38a169;
 }

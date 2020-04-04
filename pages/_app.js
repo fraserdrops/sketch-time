@@ -62,8 +62,7 @@ function MyApp({ Component, pageProps }) {
         ref={ref}
         style={{
           height: '100vh',
-          WebkitOverflowScrolling: 'touch',
-          overflowY: 'auto'
+          width: '100vw'
         }}
       >
         <Head>

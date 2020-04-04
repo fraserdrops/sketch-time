@@ -21,7 +21,8 @@ const App = props => {
   return (
     <div className='App'>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h1>Pictionary - Covid19 Edition</h1>
+        <h1 style={{ margin: 0, marginTop: 10, fontWeight: 500 }}>Pictionary</h1>
+        <h2 style={{ margin: 0, marginTop: 5, fontWeight: 400 }}>Covid19 Edition</h2>
         <p style={{ marginBottom: 0 }}>Username</p>
         <input
           style={{ marginBottom: 20 }}
@@ -33,17 +34,26 @@ const App = props => {
         />
         {gameState.username && (
           <>
-            <button onClick={() => createGame()}>
-              <Link href={`/lobby?host=true&gameID=${hostGameID}`}>
-                <a>Create Game</a>
-              </Link>
-            </button>
-            <h4 style={{ marginBottom: 0 }}>Join Game</h4>
-            <p style={{ marginBottom: 0, marginTop: 0 }}>Enter Game Code</p>
-            <input value={gameID} onChange={e => setGameID(e.target.value)} />
-            <Link href={`/lobby?gameID=${gameID}`}>
-              <a>Join Game</a>
-            </Link>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h4 style={{ marginBottom: 0 }}>Join Game</h4>
+              <p style={{ marginBottom: 0, marginTop: 0 }}>Enter Game Code</p>
+              <input value={gameID} onChange={e => setGameID(e.target.value)} />
+              <button>
+                <Link href={`/lobby?gameID=${gameID}`}>
+                  <a>Join Game</a>
+                </Link>
+              </button>
+            </div>
+            <div>
+              <h4>Or</h4>
+            </div>
+            <div>
+              <button onClick={() => createGame()}>
+                <Link href={`/lobby?host=true&gameID=${hostGameID}`}>
+                  <a>Create Game</a>
+                </Link>
+              </button>
+            </div>
           </>
         )}
       </div>

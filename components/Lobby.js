@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useContext, useEffect, useState } from 'react';
 import { GameContext } from '../pages/_app';
+import JoinTeam from './JoinTeam';
 
 const App = props => {
   const { pusher } = props;
@@ -129,35 +130,33 @@ const App = props => {
   return (
     <div className='App'>
       <header className='App-header'>
-        <h2 className='App-title'>Game Lobby {gameID}</h2>
+        <h2 className='App-title' style={{ textAlign: 'center', fontWeight: 400 }}>
+          Game Lobby <span style={{ fontWeight: 700 }}>{gameID}</span>
+        </h2>
       </header>
-      <section>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h4 style={{ margin: 0 }}>Team 1</h4>
-          {Object.keys(teams)
+      <section style={{ display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
+        <JoinTeam
+          team='Team 1'
+          joinText='Join Team 1'
+          handleChangeTeam={() => handleChangeTeam('Team 1')}
+          members={Object.keys(teams)
             .filter(userID => teams[userID] === 'Team 1')
-            .map(userID => (
-              <p>{gameState.players[userID]}</p>
-            ))}
-          <button onClick={() => handleChangeTeam('Team 1')}>Join Team 1</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h4 style={{ margin: 0 }}>Team 2</h4>
-          {Object.keys(teams)
+            .map(userID => players[userID])}
+        />
+        <JoinTeam
+          team='Team 2'
+          joinText='Join Team 2'
+          handleChangeTeam={() => handleChangeTeam('Team 2')}
+          members={Object.keys(teams)
             .filter(userID => teams[userID] === 'Team 2')
-            .map(userID => (
-              <p>{gameState.players[userID]}</p>
-            ))}
-          <button onClick={() => handleChangeTeam('Team 2')}>Join Team 2</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h4 style={{ margin: 0 }}>Unsassigned</h4>
-          {Object.keys(gameState.players)
+            .map(userID => players[userID])}
+        />
+        <JoinTeam
+          team='Unassigned'
+          members={Object.keys(gameState.players)
             .filter(userID => !teams[userID])
-            .map(userID => (
-              <p>{gameState.players[userID]}</p>
-            ))}
-        </div>
+            .map(userID => players[userID])}
+        />
         {host && <button onClick={() => handleStartGame()}>Create Game</button>}
         <Link href={`/`}>
           <a>Home</a>

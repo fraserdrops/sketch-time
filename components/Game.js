@@ -142,9 +142,29 @@ const Game = props => {
   };
   const allowDrawing = userID === gameState.playState.currentPlayer;
   return (
-    <div style={{ width: '100%', height: '100vh' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0 }}>
-        {userID === gameState.playState.currentPlayer && <p>You're Up! Draw {gameState.playState.word}</p>}
+    <div
+      style={{
+        width: '100%',
+        height: '100vh'
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: 30,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%'
+        }}
+      >
+        {userID === gameState.playState.currentPlayer && (
+          <p>
+            You're Up! Draw <span style={{ fontWeight: 'bold' }}>{gameState.playState.word}</span>
+          </p>
+        )}
         {userID !== gameState.playState.currentPlayer &&
           gameState.teams[userID] === gameState.playState.currentTeam && <p>You're Up! Guess what the word is</p>}
         {gameState.teams[userID] !== gameState.playState.currentTeam && (
@@ -152,7 +172,7 @@ const Game = props => {
             {gameState.players[gameState.playState.currentPlayer]} is Drawing {gameState.playState.word}
           </p>
         )}
-        <button onClick={handleEndTurn}>End Turn</button>
+        {host && <button onClick={handleEndTurn}>End Turn</button>}
       </div>
       {allowDrawing && (
         <Draw allowDrawing={allowDrawing} pusher={pusher} drawerID={gameState.playState.currentPlayer} />

@@ -10,6 +10,10 @@ class MyDocument extends Document {
             content='width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=0'
             key='viewport'
           />
+          <link
+            href='https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&display=swap'
+            rel='stylesheet'
+          ></link>
         </Head>
         <body>
           <Main />
