@@ -3,13 +3,13 @@ import Link from 'next/link';
 import { useContext, useEffect, useState } from 'react';
 import { GameContext } from '../pages/_app';
 import JoinTeam from './JoinTeam';
+import { send } from 'xstate';
 
-const App = props => {
+const App = (props) => {
   const { pusher } = props;
   const router = useRouter();
   const host = router.query.host;
   const gameID = router.query.gameID;
-
   const { gameState, setGameState, userID } = useContext(GameContext);
   const [hostState, setHostState] = useState(gameState);
   const username = gameState.username;
@@ -18,11 +18,11 @@ const App = props => {
     if (host) {
       const channel = pusher.subscribe(`${gameID}-host-events`);
       channel.bind('changeTeam', async ({ team, userID }) => {
-        setHostState(hostState => ({ ...hostState, teams: { ...hostState.teams, [userID]: team } }));
+        send({ type: 'changeTeam', team, userID });
       });
 
-      channel.bind('joinGame', async ({ userID, username }) => {
-        setHostState(hostState => ({ ...hostState, players: { ...hostState.players, [userID]: username } }));
+      channel.bind('joinGame', async ({ username, userID }) => {
+        send({ type: 'joinGame', username, userID });
       });
     }
   }, [host, gameID, pusher]);
@@ -35,14 +35,14 @@ const App = props => {
         const payload = {
           gameID,
           gameState: hostState,
-          eventType: 'updateGameState'
+          eventType: 'updateGameState',
         };
         const res = await fetch('/api/game', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           console.error('event not sent');
@@ -61,19 +61,19 @@ const App = props => {
     });
   }, [setGameState, gameID, pusher]);
 
-  const handleChangeTeam = async team => {
+  const handleChangeTeam = async (team) => {
     const payload = {
       userID,
       gameID,
       team,
-      eventType: 'changeTeam'
+      eventType: 'changeTeam',
     };
     const res = await fetch('/api/host', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       console.error('event not sent');
@@ -86,14 +86,14 @@ const App = props => {
         userID,
         username,
         gameID,
-        eventType: 'joinGame'
+        eventType: 'joinGame',
       };
       const res = await fetch('/api/host', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         console.error('event not sent');
@@ -106,7 +106,7 @@ const App = props => {
 
   // host only
   const handleStartGame = () => {
-    setHostState(hostState => ({ ...hostState, gameStatus: 'game' }));
+    setHostState((hostState) => ({ ...hostState, gameStatus: 'game' }));
     // const players = Object.keys(gameState.teams);
     // let currentPlayer = undefined;
     // players.forEach(player => {
@@ -140,22 +140,22 @@ const App = props => {
           joinText='Join Team 1'
           handleChangeTeam={() => handleChangeTeam('Team 1')}
           members={Object.keys(teams)
-            .filter(userID => teams[userID] === 'Team 1')
-            .map(userID => players[userID])}
+            .filter((userID) => teams[userID] === 'Team 1')
+            .map((userID) => players[userID])}
         />
         <JoinTeam
           team='Team 2'
           joinText='Join Team 2'
           handleChangeTeam={() => handleChangeTeam('Team 2')}
           members={Object.keys(teams)
-            .filter(userID => teams[userID] === 'Team 2')
-            .map(userID => players[userID])}
+            .filter((userID) => teams[userID] === 'Team 2')
+            .map((userID) => players[userID])}
         />
         <JoinTeam
           team='Unassigned'
           members={Object.keys(gameState.players)
-            .filter(userID => !teams[userID])
-            .map(userID => players[userID])}
+            .filter((userID) => !teams[userID])
+            .map((userID) => players[userID])}
         />
         {host && <button onClick={() => handleStartGame()}>Create Game</button>}
         <Link href={`/`}>
