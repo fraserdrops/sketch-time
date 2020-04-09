@@ -6,13 +6,15 @@ const pusher = new Pusher({
   appId,
   key,
   secret,
-  cluster
+  cluster,
 });
 
 module.exports = async (req, res) => {
   try {
     await new Promise((resolve, reject) => {
-      pusher.trigger(`${req.body.gameID}-game-events`, req.body.eventType, req.body, err => {
+      console.log(req.body);
+      pusher.trigger(`${'yes'}-game-events`, 'events', req.body, (err) => {
+        console.log('error', err);
         if (err) return reject(err);
         resolve();
       });

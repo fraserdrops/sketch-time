@@ -7,68 +7,21 @@ import { useMachine, useService } from '@xstate/react';
 import { GameServiceContext, PlayerServiceContext } from '../pages/index';
 
 const App = (props) => {
-  const { pusher } = props;
+  const { pusher, myGameState, isHost } = props;
   const router = useRouter();
-  const host = router.query.host;
+  const host = isHost;
   const gameID = router.query.gameID;
   const playerService = useContext(PlayerServiceContext);
   const [playerState, playerSend] = useService(playerService);
-  const [gameState, gameSend] = useContext(GameServiceContext);
+  let [gameState, gameSend, gameSendGlobal] = useContext(GameServiceContext);
+  if (!host) {
+    gameState.context = myGameState;
+  }
   const { id, username } = playerState.context;
   const { players, teams } = gameState.context;
-  console.log(players, teams);
-
-  // // host update game state
-  // // broadcast to other players
-  // useEffect(() => {
-  //   const handleGameStateChange = async () => {
-  //     if (host) {
-  //       const payload = {
-  //         gameID,
-  //         gameState: hostState,
-  //         eventType: 'updateGameState',
-  //       };
-  //       const res = await fetch('/api/game', {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //         },
-  //         body: JSON.stringify(payload),
-  //       });
-  //       if (!res.ok) {
-  //         console.error('event not sent');
-  //       }
-  //     }
-  //   };
-
-  //   handleGameStateChange();
-  // }, [host, hostState, gameID]);
-
-  // game events
-  // useEffect(() => {
-  //   const channel = pusher.subscribe(`${gameID}-game-events`);
-  //   channel.bind('updateGameState', ({ gameState }) => {
-  //     setGameState(gameState);
-  //   });
-  // }, [setGameState, gameID, pusher]);
 
   const handleChangeTeam = async (team) => {
-    const payload = {
-      id,
-      gameID,
-      team,
-      eventType: 'changeTeam',
-    };
-    const res = await fetch('/api/host', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      console.error('event not sent');
-    }
+    gameSendGlobal({ type: 'CHANGE_TEAM', team, userID: id });
   };
 
   // host only

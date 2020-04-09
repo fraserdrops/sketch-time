@@ -11,7 +11,7 @@ function getRandomInt(min, max) {
 const Home = (props) => {
   const playerService = useContext(PlayerServiceContext);
   const [playerState, playerSend] = useService(playerService);
-  const [gameState, gameSend] = useContext(GameServiceContext);
+  const [gameState, gameSendLocal, gameSendGlobal] = useContext(GameServiceContext);
   const [gameID, setGameID] = useState('');
 
   const hostGameID = getRandomInt(1000, 9999);
@@ -19,7 +19,7 @@ const Home = (props) => {
   const { id, username } = playerState.context;
 
   const createGame = () => {
-    gameSend([
+    gameSendLocal([
       { type: 'CREATE_GAME', gameID: hostGameID },
       { type: 'PLAYER_JOIN', userID: id, username },
     ]);
@@ -27,7 +27,8 @@ const Home = (props) => {
   };
 
   const joinGame = () => {
-    playerSend({ type: 'JOIN_GAME', gameID: gameID });
+    gameSendGlobal({ type: 'PLAYER_JOIN', userID: id, username });
+    playerSend({ type: 'JOIN_GAME', gameID: gameID, userID: id, username });
   };
 
   return (

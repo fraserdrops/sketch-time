@@ -1,10 +1,16 @@
 import { Machine, assign } from 'xstate';
+import Pusher from 'pusher-js';
 
 function getRandomInt(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+let pusher = new Pusher('3a40fa337322e97d8d0c', {
+  cluster: 'ap4',
+  forceTLS: true,
+});
 
 const GameMachine = Machine(
   {
@@ -14,6 +20,7 @@ const GameMachine = Machine(
       gameID: undefined,
       players: [],
       teams: {},
+      pusher,
     },
     states: {
       ready: {
@@ -28,10 +35,10 @@ const GameMachine = Machine(
         on: {
           START_GAME: { target: 'playing', actions: ['broadcastGameStart'] },
           CHANGE_TEAM: {
-            actions: ['changeTeam'],
+            actions: ['changeTeam', 'broadcast'],
           },
           PLAYER_JOIN: {
-            actions: ['joinGame'],
+            actions: ['joinGame', 'broadcast'],
           },
         },
       },
@@ -41,6 +48,25 @@ const GameMachine = Machine(
   {
     actions: {
       // action implementations
+      broadcast: async (ctx, event) => {
+        // console.log('broadcast', ctx);
+        const { gameID, players, teams } = ctx;
+        const payload = {
+          gameID,
+          players,
+          teams,
+        };
+        const res = await fetch('/api/game', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          console.error('event not sent');
+        }
+      },
       generateGameID: assign({
         gameID: (ctx, event) => event.gameID,
       }),
