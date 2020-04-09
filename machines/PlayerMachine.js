@@ -1,37 +1,34 @@
 import { Machine, assign } from 'xstate';
+import { v4 as uuid } from 'uuid';
 
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-const GameMachine = Machine(
+const PlayerMachine = Machine(
   {
-    id: 'game',
+    id: 'player',
     initial: 'ready',
     context: {
-      gameID: undefined,
-      players: [],
-      teams: {},
+      id: uuid(),
+      username: undefined,
+      team: undefined,
+    },
+    on: {
+      UPDATE_USERNAME: {
+        actions: ['updateUsername'],
+      },
     },
     states: {
       ready: {
         on: {
-          CREATE_GAME: {
+          JOIN_GAME: {
             target: 'lobby',
-            actions: ['generateGameID'],
+            actions: ['joinGame'],
           },
         },
       },
       lobby: {
         on: {
-          START_GAME: { target: 'playing', actions: ['broadcastGameStart'] },
+          START_GAME: { target: 'playing', actions: [] },
           CHANGE_TEAM: {
             actions: ['changeTeam'],
-          },
-          PLAYER_JOIN: {
-            actions: ['joinGame'],
           },
         },
       },
@@ -40,12 +37,11 @@ const GameMachine = Machine(
   },
   {
     actions: {
-      // action implementations
-      generateGameID: assign({
-        gameID: (ctx, event) => event.gameID,
+      updateUsername: assign({
+        username: (ctx, event) => event.username,
       }),
       subscribeToGameChannel: assign({
-        channel: (ctx, event) => ctx.pusher.subscribe(`${ctx.gameID}-host-events`),
+        gameID: (ctx, event) => ctx.pusher.subscribe(`${ctx.gameID}-host-events`),
       }),
       changeTeam: assign({
         teams: (ctx, event) => ({ ...ctx.teams, [event.userID]: event.team }),
@@ -57,4 +53,4 @@ const GameMachine = Machine(
   }
 );
 
-export default GameMachine;
+export default PlayerMachine;

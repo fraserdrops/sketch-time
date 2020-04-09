@@ -1,69 +1,60 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useContext, useEffect, useState } from 'react';
-import { GameContext } from '../pages/_app';
 import JoinTeam from './JoinTeam';
 import { send } from 'xstate';
+import { useMachine, useService } from '@xstate/react';
+import { GameServiceContext, PlayerServiceContext } from '../pages/index';
 
 const App = (props) => {
   const { pusher } = props;
   const router = useRouter();
   const host = router.query.host;
   const gameID = router.query.gameID;
-  const { gameState, setGameState, userID } = useContext(GameContext);
-  const [hostState, setHostState] = useState(gameState);
-  const username = gameState.username;
-  // host events
-  useEffect(() => {
-    if (host) {
-      const channel = pusher.subscribe(`${gameID}-host-events`);
-      channel.bind('changeTeam', async ({ team, userID }) => {
-        send({ type: 'changeTeam', team, userID });
-      });
+  const playerService = useContext(PlayerServiceContext);
+  const [playerState, playerSend] = useService(playerService);
+  const [gameState, gameSend] = useContext(GameServiceContext);
+  const { id, username } = playerState.context;
+  const { players, teams } = gameState.context;
+  console.log(players, teams);
 
-      channel.bind('joinGame', async ({ username, userID }) => {
-        send({ type: 'joinGame', username, userID });
-      });
-    }
-  }, [host, gameID, pusher]);
+  // // host update game state
+  // // broadcast to other players
+  // useEffect(() => {
+  //   const handleGameStateChange = async () => {
+  //     if (host) {
+  //       const payload = {
+  //         gameID,
+  //         gameState: hostState,
+  //         eventType: 'updateGameState',
+  //       };
+  //       const res = await fetch('/api/game', {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify(payload),
+  //       });
+  //       if (!res.ok) {
+  //         console.error('event not sent');
+  //       }
+  //     }
+  //   };
 
-  // host update game state
-  // broadcast to other players
-  useEffect(() => {
-    const handleGameStateChange = async () => {
-      if (host) {
-        const payload = {
-          gameID,
-          gameState: hostState,
-          eventType: 'updateGameState',
-        };
-        const res = await fetch('/api/game', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          console.error('event not sent');
-        }
-      }
-    };
-
-    handleGameStateChange();
-  }, [host, hostState, gameID]);
+  //   handleGameStateChange();
+  // }, [host, hostState, gameID]);
 
   // game events
-  useEffect(() => {
-    const channel = pusher.subscribe(`${gameID}-game-events`);
-    channel.bind('updateGameState', ({ gameState }) => {
-      setGameState(gameState);
-    });
-  }, [setGameState, gameID, pusher]);
+  // useEffect(() => {
+  //   const channel = pusher.subscribe(`${gameID}-game-events`);
+  //   channel.bind('updateGameState', ({ gameState }) => {
+  //     setGameState(gameState);
+  //   });
+  // }, [setGameState, gameID, pusher]);
 
   const handleChangeTeam = async (team) => {
     const payload = {
-      userID,
+      id,
       gameID,
       team,
       eventType: 'changeTeam',
@@ -80,33 +71,8 @@ const App = (props) => {
     }
   };
 
-  useEffect(() => {
-    const joinGame = async () => {
-      const payload = {
-        userID,
-        username,
-        gameID,
-        eventType: 'joinGame',
-      };
-      const res = await fetch('/api/host', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        console.error('event not sent');
-      }
-    };
-
-    // hack to make sure the subscription is set up
-    setTimeout(() => joinGame(), [1000]);
-  }, []);
-
   // host only
   const handleStartGame = () => {
-    setHostState((hostState) => ({ ...hostState, gameStatus: 'game' }));
     // const players = Object.keys(gameState.teams);
     // let currentPlayer = undefined;
     // players.forEach(player => {
@@ -126,7 +92,6 @@ const App = (props) => {
     // setHostState(hostState => ({ ...hostState, playState }));
   };
 
-  const { teams, players } = gameState;
   return (
     <div className='App'>
       <header className='App-header'>
@@ -153,14 +118,11 @@ const App = (props) => {
         />
         <JoinTeam
           team='Unassigned'
-          members={Object.keys(gameState.players)
+          members={Object.keys(players)
             .filter((userID) => !teams[userID])
             .map((userID) => players[userID])}
         />
         {host && <button onClick={() => handleStartGame()}>Create Game</button>}
-        <Link href={`/`}>
-          <a>Home</a>
-        </Link>
       </section>
     </div>
   );

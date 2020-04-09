@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/FMcIntosh/pictionary-game#readme",
   "dependencies": {
-    "@xstate/react": "^0.8.1",
+    "@xstate/react": "^1.0.0-rc.4",
     "inobounce": "^0.2.0",
     "next": "^9.3.2",
     "pusher": "^3.0.0",
