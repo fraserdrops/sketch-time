@@ -15,7 +15,6 @@ const App = (props) => {
   const [gameState, gameSend] = useMachine(GameMachine);
   const [myGameState, setGameState] = useState({ players: [], teams: {} });
   const isHost = !gameState.matches('ready');
-  console.log(isHost, gameState);
 
   const sendEventToHost = (payload) => {
     const query = async () => {
@@ -36,8 +35,8 @@ const App = (props) => {
 
   // host handler
   useEffect(() => {
-    if (isHost) {
-      const channel = pusher.subscribe(`${'yes'}-host-events`);
+    if (isHost && gameState.context.gameID) {
+      const channel = pusher.subscribe(`${gameState.context.gameID}-host-events`);
       channel.bind('events', async (event) => {
         if (Array.isArray(event)) {
           event.forEach((event) => {
@@ -48,7 +47,7 @@ const App = (props) => {
         }
       });
     }
-  }, [gameSend, pusher, isHost]);
+  }, [gameSend, pusher, isHost, gameState.context.gameID]);
 
   useEffect(() => {
     const channel = pusher.subscribe(`${'yes'}-game-events`);

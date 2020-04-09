@@ -27,8 +27,8 @@ const Home = (props) => {
   };
 
   const joinGame = () => {
-    gameSendGlobal({ type: 'PLAYER_JOIN', userID: id, username });
-    playerSend({ type: 'JOIN_GAME', gameID: gameID, userID: id, username });
+    gameSendGlobal({ type: 'PLAYER_JOIN', gameID, userID: id, username });
+    playerSend({ type: 'JOIN_GAME', gameID, userID: id, username });
   };
 
   return (

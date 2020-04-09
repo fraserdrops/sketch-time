@@ -10,7 +10,6 @@ const App = (props) => {
   const { pusher, myGameState, isHost } = props;
   const router = useRouter();
   const host = isHost;
-  const gameID = router.query.gameID;
   const playerService = useContext(PlayerServiceContext);
   const [playerState, playerSend] = useService(playerService);
   let [gameState, gameSend, gameSendGlobal] = useContext(GameServiceContext);
@@ -18,7 +17,7 @@ const App = (props) => {
     gameState.context = myGameState;
   }
   const { id, username } = playerState.context;
-  const { players, teams } = gameState.context;
+  const { players, teams, gameID } = gameState.context;
 
   const handleChangeTeam = async (team) => {
     gameSendGlobal({ type: 'CHANGE_TEAM', team, userID: id });
