@@ -6,10 +6,6 @@ import Head from 'next/head';
 
 // import App from 'next/app'
 export const GameContext = React.createContext();
-let pusher = new Pusher('3a40fa337322e97d8d0c', {
-  cluster: 'ap4',
-  forceTLS: true
-});
 
 function MyApp({ Component, pageProps }) {
   const [userID] = useState(uuid());
@@ -20,7 +16,7 @@ function MyApp({ Component, pageProps }) {
     players: {},
     teams: {},
     playState: { currentPlayer: undefined, currentTeam: undefined },
-    username: ''
+    username: '',
   });
 
   useEffect(() => {
@@ -31,7 +27,7 @@ function MyApp({ Component, pageProps }) {
 
       element.addEventListener(
         'touchstart',
-        function(e) {
+        function (e) {
           if (e.touches.length !== 1) {
             return;
           }
@@ -44,7 +40,7 @@ function MyApp({ Component, pageProps }) {
 
       element.addEventListener(
         'touchmove',
-        function(e) {
+        function (e) {
           if (prevent) {
             prevent = false;
             e.preventDefault();
@@ -62,7 +58,7 @@ function MyApp({ Component, pageProps }) {
         ref={ref}
         style={{
           height: '100vh',
-          width: '100vw'
+          width: '100vw',
         }}
       >
         <Head>
@@ -72,7 +68,7 @@ function MyApp({ Component, pageProps }) {
             key='viewport'
           />
         </Head>
-        <Component {...pageProps} pusher={pusher} />
+        <Component {...pageProps} />
       </div>
     </GameContext.Provider>
   );

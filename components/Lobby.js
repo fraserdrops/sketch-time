@@ -1,14 +1,11 @@
+import { useService } from '@xstate/react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-import { useContext, useEffect, useState } from 'react';
-import JoinTeam from './JoinTeam';
-import { send } from 'xstate';
-import { useMachine, useService } from '@xstate/react';
+import { useContext } from 'react';
 import { GameServiceContext, PlayerServiceContext } from '../pages/index';
+import JoinTeam from './JoinTeam';
 
 const App = (props) => {
-  const { pusher, myGameState, isHost } = props;
-  const router = useRouter();
+  const { myGameState, isHost } = props;
   const host = isHost;
   const playerService = useContext(PlayerServiceContext);
   const [playerState, playerSend] = useService(playerService);
@@ -20,7 +17,7 @@ const App = (props) => {
   const { players, teams, gameID } = gameState.context;
 
   const handleChangeTeam = async (team) => {
-    gameSendGlobal({ type: 'CHANGE_TEAM', team, userID: id });
+    gameSendGlobal({ type: 'CHANGE_TEAM', gameID, team, userID: id });
   };
 
   // host only
@@ -42,6 +39,7 @@ const App = (props) => {
     //   }
     // };
     // setHostState(hostState => ({ ...hostState, playState }));
+    gameSendGlobal({ type: 'START_GAME' });
   };
 
   return (

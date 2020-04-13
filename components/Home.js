@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react';
 import { useMachine, useService } from '@xstate/react';
-import { GameServiceContext, PlayerServiceContext } from '../pages/index';
+import { GameServiceContext, PlayerServiceContext, ClientServiceContext } from '../pages/index';
 
 function getRandomInt(min, max) {
   min = Math.ceil(min);
@@ -10,6 +10,8 @@ function getRandomInt(min, max) {
 
 const Home = (props) => {
   const playerService = useContext(PlayerServiceContext);
+  const clientService = useContext(ClientServiceContext);
+  const [clientState, clientSend] = useService(clientService);
   const [playerState, playerSend] = useService(playerService);
   const [gameState, gameSendLocal, gameSendGlobal] = useContext(GameServiceContext);
   const [gameID, setGameID] = useState('');
@@ -19,16 +21,14 @@ const Home = (props) => {
   const { id, username } = playerState.context;
 
   const createGame = () => {
-    gameSendLocal([
-      { type: 'CREATE_GAME', gameID: hostGameID },
-      { type: 'PLAYER_JOIN', userID: id, username },
-    ]);
-    playerSend({ type: 'JOIN_GAME', gameID: hostGameID });
+    gameSendLocal({ type: 'CREATE_GAME', gameID: hostGameID });
+    clientSend({ type: 'CONNECT_TO_GAME', gameID: hostGameID });
+    clientSend({ type: 'PLAYER_JOIN', gameID: hostGameID, userID: id, username, player: playerState.context });
+    playerSend({ type: 'JOIN_GAME', userID: id, username, player: playerState.context });
   };
 
   const joinGame = () => {
     gameSendGlobal({ type: 'PLAYER_JOIN', gameID, userID: id, username });
-    playerSend({ type: 'JOIN_GAME', gameID, userID: id, username });
   };
 
   return (

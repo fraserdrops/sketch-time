@@ -13,50 +13,26 @@ let pusher = new Pusher('3a40fa337322e97d8d0c', {
   forceTLS: true,
 });
 
-const GameMachine = Machine(
+const HostMachine = Machine(
   {
-    id: 'game',
-    initial: 'ready',
+    id: 'host',
+    initial: 'idle',
     context: {
       gameID: undefined,
-      players: [],
-      teams: {},
+      clients: [],
       pusher,
-      playerRefs: [],
     },
     states: {
-      ready: {
+      idle: {
         on: {
           CREATE_GAME: {
-            target: 'lobby',
-            actions: ['log', 'generateGameID'],
+            target: 'connected',
+            actions: ['generateGameID', 'connectPusher'],
           },
         },
       },
-      lobby: {
-        invoke: {
-          id: 'socket',
-          src: (context, event) => (callback, onEvent) => {
-            console.log('invoke game', context.gameID);
-            const channel = pusher.subscribe(`${context.gameID}-host-events`);
-            channel.bind('events', async (event) => {
-              console.log('EVENT', event);
-              if (Array.isArray(event)) {
-                event.forEach((event) => {
-                  callback(event);
-                });
-              } else {
-                callback(event);
-              }
-            });
-            console.log(channel);
-          },
-        },
+      connected: {
         on: {
-          START_GAME: { target: 'playing', actions: ['broadcastGameStart'] },
-          CHANGE_TEAM: {
-            actions: ['log', 'changeTeam', 'broadcast'],
-          },
           PLAYER_JOIN: {
             actions: ['log', 'joinGame', 'playerRef', 'broadcast'],
           },
@@ -115,4 +91,4 @@ const GameMachine = Machine(
   }
 );
 
-export default GameMachine;
+export default HostMachine;
