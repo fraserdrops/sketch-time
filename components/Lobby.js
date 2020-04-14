@@ -7,17 +7,16 @@ import JoinTeam from './JoinTeam';
 const App = (props) => {
   const { myGameState, isHost } = props;
   const host = isHost;
-  const playerService = useContext(PlayerServiceContext);
-  const [playerState, playerSend] = useService(playerService);
+  const [playerState, playerSend] = useContext(PlayerServiceContext);
   let [gameState, gameSend, gameSendGlobal] = useContext(GameServiceContext);
   if (!host) {
     gameState.context = myGameState;
   }
-  const { id, username } = playerState.context;
-  const { players, teams, gameID } = gameState.context;
+  const { id, username, game } = playerState.context;
+  const { players, teams, gameID } = game;
 
   const handleChangeTeam = async (team) => {
-    gameSendGlobal({ type: 'CHANGE_TEAM', gameID, team, userID: id });
+    playerSend({ type: 'CHANGE_TEAM', team, userID: id });
   };
 
   // host only

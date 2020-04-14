@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
-import Pusher from 'pusher-js';
 import '../styles.css';
 import Head from 'next/head';
 

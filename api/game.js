@@ -13,8 +13,7 @@ module.exports = async (req, res) => {
   try {
     await new Promise((resolve, reject) => {
       console.log(req.body);
-      pusher.trigger(`${'yes'}-game-events`, 'events', req.body, (err) => {
-        console.log('error', err);
+      pusher.trigger(`${req.body.gameID}-game-events`, 'events', req.body, (err) => {
         if (err) return reject(err);
         resolve();
       });

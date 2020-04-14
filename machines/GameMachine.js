@@ -19,8 +19,10 @@ const GameMachine = Machine(
     initial: 'ready',
     context: {
       gameID: undefined,
-      players: [],
-      teams: {},
+      game: {
+        players: [],
+        teams: {},
+      },
       pusher,
       playerRefs: [],
     },
@@ -29,7 +31,7 @@ const GameMachine = Machine(
         on: {
           CREATE_GAME: {
             target: 'lobby',
-            actions: ['log', 'generateGameID'],
+            actions: ['generateGameID'],
           },
         },
       },
@@ -37,10 +39,8 @@ const GameMachine = Machine(
         invoke: {
           id: 'socket',
           src: (context, event) => (callback, onEvent) => {
-            console.log('invoke game', context.gameID);
             const channel = pusher.subscribe(`${context.gameID}-host-events`);
             channel.bind('events', async (event) => {
-              console.log('EVENT', event);
               if (Array.isArray(event)) {
                 event.forEach((event) => {
                   callback(event);
@@ -49,16 +49,15 @@ const GameMachine = Machine(
                 callback(event);
               }
             });
-            console.log(channel);
           },
         },
         on: {
           START_GAME: { target: 'playing', actions: ['broadcastGameStart'] },
           CHANGE_TEAM: {
-            actions: ['log', 'changeTeam', 'broadcast'],
+            actions: ['changeTeam', 'broadcast'],
           },
           PLAYER_JOIN: {
-            actions: ['log', 'joinGame', 'playerRef', 'broadcast'],
+            actions: ['joinGame', 'playerRef', 'broadcast'],
           },
         },
       },
@@ -70,23 +69,22 @@ const GameMachine = Machine(
       log: (ctx, event) => console.log(event),
       // action implementations
       broadcast: async (ctx, event) => {
-        // console.log('broadcast', ctx);
-        const { gameID, players, teams } = ctx;
         const payload = {
-          gameID,
-          players,
-          teams,
+          gameID: ctx.gameID,
+          game: ctx.game,
         };
-        const res = await fetch('/api/game', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          console.error('event not sent');
-        }
+        setTimeout(async () => {
+          const res = await fetch('/api/game', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            console.error('event not sent');
+          }
+        }, 1000);
       },
 
       generateGameID: assign({
@@ -96,10 +94,16 @@ const GameMachine = Machine(
         channel: (ctx, event) => ctx.pusher.subscribe(`${ctx.gameID}-host-events`),
       }),
       changeTeam: assign({
-        teams: (ctx, event) => ({ ...ctx.teams, [event.userID]: event.team }),
+        game: (ctx, event) => ({
+          ...ctx.game,
+          teams: { ...ctx.teams, [event.userID]: event.team },
+        }),
       }),
       joinGame: assign({
-        players: (ctx, event) => ({ ...ctx.players, [event.userID]: { username: event.username } }),
+        game: (ctx, event) => ({
+          ...ctx.game,
+          players: { ...ctx.game.players, [event.userID]: { username: event.username } },
+        }),
       }),
       playerRef: assign({
         playerRefs: (context, event) => [
