@@ -144,16 +144,53 @@ const GameMachine = Machine(
         initial: 'team1',
         states: {
           team1: {
-            initial: 'ready',
+            initial: 'yoza',
             states: {
-              ready: {
+              yoza: {
                 after: {
-                  10_000: 'playing',
+                  3000: 'ready',
+                },
+              },
+              ready: {
+                // assign new player and broadcast to the players through the socket
+                entry: [
+                  'deriveTeam1Turn',
+                  send(
+                    (ctx, event) => {
+                      const { currentPlayer, team1, team2 } = ctx.play;
+                      const playerEvents = {};
+                      playerEvents[currentPlayer] = {
+                        type: 'DRAW',
+                        word: 'cheese',
+                      };
+
+                      team1.members.forEach((member) => {
+                        if (member !== currentPlayer) {
+                          playerEvents[member] = {
+                            type: 'GUESS',
+                          };
+                        }
+                      });
+
+                      team2.members.forEach((member) => {
+                        if (member !== currentPlayer) {
+                          playerEvents[member] = {
+                            type: 'SPECTATE',
+                          };
+                        }
+                      });
+                      return { type: 'TEAM_1_TURN', gameID: ctx.gameID, playerEvents };
+                    },
+                    { to: 'client' }
+                  ),
+                ],
+                after: {
+                  10000: 'playing',
                 },
               },
               playing: {
                 after: {
-                  60_000: 'endOfTurn',
+                  60000: 'endOfTurn',
                 },
               },
               endOfTurn: {
@@ -170,12 +207,12 @@ const GameMachine = Machine(
             states: {
               ready: {
                 after: {
-                  10_000: 'playing',
+                  10000: 'playing',
                 },
               },
               playing: {
                 after: {
-                  60_000: 'endOfTurn',
+                  60000: 'endOfTurn',
                 },
               },
               endOfTurn: {
@@ -194,6 +231,62 @@ const GameMachine = Machine(
   {
     actions: {
       log: (ctx, event) => console.log(event),
+      deriveTeam1Turn: assign({
+        play: (ctx, event) => {
+          const {
+            team1: { members, lastPlayed },
+          } = ctx.play;
+          console.log('derive');
+          const lastPlayedIndex = members.indexOf(lastPlayed);
+          const nextPlayerIndex = lastPlayedIndex > members.length ? 0 : lastPlayedIndex + 1;
+          const nextPlayer = members[nextPlayerIndex];
+          return {
+            ...ctx.play,
+            currentPlayer: nextPlayer,
+          };
+        },
+      }),
+      broadcastTeam1Turn: send((ctx, event) => {
+        console.log(ctx.play);
+
+        const { currentPlayer, team1, team2 } = ctx.play;
+        const playerEvents = {};
+        playerEvents[currentPlayer] = {
+          type: 'DRAW',
+          word: 'cheese',
+        };
+
+        team1.members.forEach((member) => {
+          if (member !== currentPlayer) {
+            playerEvents[member] = {
+              type: 'GUESS',
+            };
+          }
+        });
+
+        team2.members.forEach((member) => {
+          if (member !== currentPlayer) {
+            playerEvents[member] = {
+              type: 'SPECTATE',
+            };
+          }
+        });
+        console.log(playerEvents);
+
+        console.log('BROADCAST TEAM !', {
+          type: 'TEAM_1_TURN',
+          gameID: ctx.gameID,
+          play: ctx.play,
+        });
+        return (
+          {
+            type: 'TEAM_1_TURN',
+            gameID: ctx.gameID,
+            play: ctx.play,
+          },
+          { to: 'client' }
+        );
+      }),
       broadcastGameState: send(
         (ctx, event) => ({
           type: 'GAME_UPDATE',

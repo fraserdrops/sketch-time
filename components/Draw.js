@@ -1,7 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
+import Pusher from 'pusher-js';
 
-const Draw = props => {
-  const { pusher, drawerID } = props;
+let pusher = new Pusher('3a40fa337322e97d8d0c', {
+  cluster: 'ap4',
+  forceTLS: true,
+});
+
+const Draw = (props) => {
+  const { drawerID } = props;
   const { allowDrawing } = props;
   const [color, setColor] = useState('black');
   const canvasRef = useRef();
@@ -30,16 +36,16 @@ const Draw = props => {
     channel.bind('drawing', onDrawingEvent);
 
     let current = {
-      color: 'black'
+      color: 'black',
     };
 
     async function pushDrawData(data) {
       const res = await fetch('/api/push-draw', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       if (!res.ok) {
         console.error('event not sent');
@@ -67,7 +73,7 @@ const Draw = props => {
         x1: x1 / w,
         y0: y0 / h,
         y1: y1 / h,
-        color
+        color,
       });
     }
 
@@ -112,7 +118,7 @@ const Draw = props => {
 
     function throttle(callback, delay) {
       let previousCall = Date.now();
-      return function() {
+      return function () {
         let time = Date.now();
 
         if (time - previousCall >= delay) {

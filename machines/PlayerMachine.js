@@ -63,6 +63,14 @@ const ClientMachine = Machine({
         START_GAME: {
           actions: [sendParent((ctx, event) => event)],
         },
+        TEAM_1_TURN: {
+          actions: [
+            sendParent((ctx, event) => {
+              console.log('TEAM  1 TURN RECEIVED', event);
+              return { ...event, type: 'PLAY_UPDATE' };
+            }),
+          ],
+        },
         '*': {
           actions: send(
             (ctx, event) => ({
@@ -87,6 +95,9 @@ export const PlayerMachine = Machine({
     game: {
       players: [],
       teams: {},
+    },
+    play: {
+      word: undefined,
     },
   },
   invoke: {
@@ -141,9 +152,41 @@ export const PlayerMachine = Machine({
       initial: 'idle',
       states: {
         idle: {},
-        drawing: {},
+        drawing: {
+          entry: [() => console.log('IM In drawing state')],
+        },
         guessing: {},
         spectating: {},
+      },
+      on: {
+        PLAY_UPDATE: {
+          actions: [
+            send((ctx, event) => {
+              console.log('PLAY UPDATE', event);
+              return event.playerEvents[ctx.id];
+            }),
+          ],
+        },
+        DRAW: {
+          target: '.drawing',
+          actions: [
+            () => console.log('IM DRAWING'),
+            assign({
+              play: (ctx, event) => {
+                console.log(event);
+                return { ...ctx.play, word: event.word };
+              },
+            }),
+          ],
+        },
+        GUESS: {
+          target: '.guessing',
+          actions: [() => console.log('IM Gonna spectate')],
+        },
+        SPECTATE: {
+          target: '.spectating',
+          actions: [() => console.log('IM Gonna spectate')],
+        },
       },
     },
   },

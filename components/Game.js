@@ -9,8 +9,11 @@ const Game = (props) => {
   const { pusher } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const [gameState, gameSend] = useContext(GameServiceContext);
-  const { id: userID, username, game, gameID } = playerState.context;
+  const { id: userID, username, game, gameID, play } = playerState.context;
   const { players, teams } = game;
+  const { word } = play;
+
+  const drawing = playerState.matches({ playing: 'drawing' });
 
   return (
     <div
@@ -19,7 +22,7 @@ const Game = (props) => {
         height: '100vh',
       }}
     >
-      {/* <div
+      <div
         style={{
           position: 'absolute',
           top: 0,
@@ -28,30 +31,26 @@ const Game = (props) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '100%'
+          width: '100%',
         }}
       >
-        {userID === gameState.playState.currentPlayer && (
+        {drawing && (
           <p>
-            You're Up! Draw <span style={{ fontWeight: 'bold' }}>{gameState.playState.word}</span>
+            You're Up! Draw <span style={{ fontWeight: 'bold' }}>{word}</span>
           </p>
         )}
-        {userID !== gameState.playState.currentPlayer &&
-          gameState.teams[userID] === gameState.playState.currentTeam && <p>You're Up! Guess what the word is</p>}
-        {gameState.teams[userID] !== gameState.playState.currentTeam && (
+        {playerState.matches({ playing: 'guessing' }) && <p>You're Up! Guess what the word is</p>}
+        {/* {playerState.matches({ playing: 'spectating' }) && (
           <p>
             {gameState.players[gameState.playState.currentPlayer]} is Drawing {gameState.playState.word}
           </p>
-        )}
-        {host && <button onClick={handleEndTurn}>End Turn</button>}
+        )} */}
+        {/* {host && <button onClick={handleEndTurn}>End Turn</button>} */}
       </div>
-      {allowDrawing && (
-        <Draw allowDrawing={allowDrawing} pusher={pusher} drawerID={gameState.playState.currentPlayer} />
-      )}
-      {!allowDrawing && (
-        <Draw allowDrawing={allowDrawing} pusher={pusher} drawerID={gameState.playState.currentPlayer} />
-      )} */}
+      {drawing && <Draw allowDrawing={drawing} pusher={pusher} />}
+      {!drawing && <Draw allowDrawing={drawing} pusher={pusher} />}
       <p>Game</p>
+      <div></div>
     </div>
   );
 };
