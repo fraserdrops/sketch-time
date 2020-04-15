@@ -1,4 +1,4 @@
-import { Machine, assign, spawn } from 'xstate';
+import { Machine, assign, spawn, send, sendParent } from 'xstate';
 import Pusher from 'pusher-js';
 import PlayerMachine from './PlayerMachine';
 
@@ -11,6 +11,85 @@ function getRandomInt(min, max) {
 let pusher = new Pusher('3a40fa337322e97d8d0c', {
   cluster: 'ap4',
   forceTLS: true,
+});
+
+const ClientMachine = Machine({
+  id: 'client',
+  initial: 'idle',
+  context: {
+    gameID: undefined,
+    pusher,
+  },
+  states: {
+    idle: {
+      on: {
+        CONNECT_TO_GAME: {
+          target: 'connected',
+          actions: assign({ gameID: (ctx, event) => event.gameID }),
+        },
+      },
+    },
+    connected: {
+      invoke: {
+        id: 'socket',
+        src: (ctx, event) => (callback, onEvent) => {
+          console.log('INVOKE GAME SOCKET', ctx.gameID);
+          const channel = pusher.subscribe(`${ctx.gameID}-host-events`);
+          channel.bind('events', async (event) => {
+            console.log('GAME ', event);
+            if (Array.isArray(event)) {
+              event.forEach((event) => {
+                callback({ type: 'TO_PARENT', event });
+              });
+            } else {
+              callback({ type: 'TO_PARENT', event });
+            }
+          });
+
+          onEvent(async (event) => {
+            console.log('BROADCAST', event);
+            setTimeout(async () => {
+              const res = await fetch('/api/game', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(event),
+              });
+              if (!res.ok) {
+                console.error('event not sent');
+              }
+            }, 1000);
+          });
+
+          return () => pusher.unsubscribe(`${ctx.gameID}-host-events`);
+        },
+      },
+      on: {
+        // events from websocket to the game machine
+        TO_PARENT: {
+          actions: [
+            sendParent((ctx, event) => {
+              console.log('sent to machine, ', event, event.event);
+              return event.event;
+            }),
+          ],
+        },
+        // events from the game machine to the websocket
+        '*': {
+          actions: send(
+            (ctx, event) => {
+              console.log('SEND TO PLAYER', event);
+              return {
+                ...event,
+              };
+            },
+            { to: 'socket' }
+          ),
+        },
+      },
+    },
+  },
 });
 
 const GameMachine = Machine(
@@ -26,38 +105,30 @@ const GameMachine = Machine(
       pusher,
       playerRefs: [],
     },
+    invoke: {
+      id: 'client',
+      src: ClientMachine,
+    },
     states: {
       ready: {
         on: {
           CREATE_GAME: {
             target: 'lobby',
-            actions: ['generateGameID'],
+            actions: [
+              'generateGameID',
+              send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
+            ],
           },
         },
       },
       lobby: {
-        invoke: {
-          id: 'socket',
-          src: (context, event) => (callback, onEvent) => {
-            const channel = pusher.subscribe(`${context.gameID}-host-events`);
-            channel.bind('events', async (event) => {
-              if (Array.isArray(event)) {
-                event.forEach((event) => {
-                  callback(event);
-                });
-              } else {
-                callback(event);
-              }
-            });
-          },
-        },
         on: {
-          START_GAME: { target: 'playing', actions: ['broadcastGameStart'] },
+          START_GAME: { target: 'playing', actions: ['broadcastStartGame'] },
           CHANGE_TEAM: {
-            actions: ['changeTeam', 'broadcast'],
+            actions: ['changeTeam', 'broadcastGameState'],
           },
           PLAYER_JOIN: {
-            actions: ['joinGame', 'playerRef', 'broadcast'],
+            actions: ['joinGame', 'broadcastGameState'],
           },
         },
       },
@@ -67,26 +138,22 @@ const GameMachine = Machine(
   {
     actions: {
       log: (ctx, event) => console.log(event),
-      // action implementations
-      broadcast: async (ctx, event) => {
-        const payload = {
+      broadcastGameState: send(
+        (ctx, event) => ({
+          type: 'GAME_UPDATE',
           gameID: ctx.gameID,
           game: ctx.game,
-        };
-        setTimeout(async () => {
-          const res = await fetch('/api/game', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) {
-            console.error('event not sent');
-          }
-        }, 1000);
-      },
-
+        }),
+        { to: 'client' }
+      ),
+      broadcastStartGame: send(
+        (ctx, event) => ({
+          type: 'START_GAME',
+          gameID: ctx.gameID,
+          game: ctx.game,
+        }),
+        { to: 'client' }
+      ),
       generateGameID: assign({
         gameID: (ctx, event) => event.gameID,
       }),
@@ -94,16 +161,20 @@ const GameMachine = Machine(
         channel: (ctx, event) => ctx.pusher.subscribe(`${ctx.gameID}-host-events`),
       }),
       changeTeam: assign({
-        game: (ctx, event) => ({
-          ...ctx.game,
-          teams: { ...ctx.teams, [event.userID]: event.team },
-        }),
+        game: (ctx, event) => {
+          return {
+            ...ctx.game,
+            teams: { ...ctx.game.teams, [event.userID]: event.team },
+          };
+        },
       }),
       joinGame: assign({
-        game: (ctx, event) => ({
-          ...ctx.game,
-          players: { ...ctx.game.players, [event.userID]: { username: event.username } },
-        }),
+        game: (ctx, event) => {
+          return {
+            ...ctx.game,
+            players: { ...ctx.game.players, [event.userID]: { username: event.username } },
+          };
+        },
       }),
       playerRef: assign({
         playerRefs: (context, event) => [

@@ -29,16 +29,18 @@ const ClientMachine = Machine({
         src: (context, event) => (callback, onEvent) => {
           const channel = pusher.subscribe(`${context.gameID}-game-events`);
           channel.bind('events', async (event) => {
+            console.log('FROM GAME', event);
             if (Array.isArray(event)) {
               event.forEach((event) => {
-                callback({ type: 'GAME_UPDATE', game: event.game });
+                callback(event);
               });
             } else {
-              callback({ type: 'GAME_UPDATE', game: event.game });
+              callback(event);
             }
           });
 
           onEvent(async (event) => {
+            console.log('PLAYER TO GAME', event);
             const res = await fetch('/api/host', {
               method: 'POST',
               headers: {
@@ -50,18 +52,16 @@ const ClientMachine = Machine({
               console.error('event not sent');
             }
           });
+
+          return () => pusher.unsubscribe(`${context.gameID}-game-events`);
         },
       },
       on: {
         GAME_UPDATE: {
-          actions: [
-            sendParent((ctx, event) => {
-              return {
-                type: 'GAME_UPDATE',
-                game: event.game,
-              };
-            }),
-          ],
+          actions: [sendParent((ctx, event) => event)],
+        },
+        START_GAME: {
+          actions: [sendParent((ctx, event) => event)],
         },
         '*': {
           actions: send(
@@ -83,6 +83,7 @@ export const PlayerMachine = Machine({
     id: uuid(),
     username: undefined,
     team: undefined,
+    gameID: undefined,
     game: {
       players: [],
       teams: {},
@@ -103,6 +104,7 @@ export const PlayerMachine = Machine({
         JOIN_GAME: {
           target: 'lobby',
           actions: [
+            assign({ gameID: (ctx, event) => event.gameID }),
             send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
             send((ctx, event) => ({ ...event, type: 'PLAYER_JOIN' }), { to: 'client' }),
           ],
@@ -111,7 +113,16 @@ export const PlayerMachine = Machine({
     },
     lobby: {
       on: {
-        START_GAME: { target: 'playing', actions: [] },
+        START_GAME: {
+          target: 'playing',
+          actions: [
+            assign({
+              game: (ctx, event) => {
+                return event.game;
+              },
+            }),
+          ],
+        },
         CHANGE_TEAM: {
           actions: [send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM' }), { to: 'client' })],
         },

@@ -1,5 +1,3 @@
-import { useService } from '@xstate/react';
-import { useRouter } from 'next/router';
 import { useContext } from 'react';
 import { GameServiceContext, PlayerServiceContext } from '../pages/index';
 import JoinTeam from './JoinTeam';
@@ -8,12 +6,12 @@ const App = (props) => {
   const { myGameState, isHost } = props;
   const host = isHost;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  let [gameState, gameSend, gameSendGlobal] = useContext(GameServiceContext);
+  const [gameState, gameSend] = useContext(GameServiceContext);
   if (!host) {
     gameState.context = myGameState;
   }
-  const { id, username, game } = playerState.context;
-  const { players, teams, gameID } = game;
+  const { id, username, game, gameID } = playerState.context;
+  const { players, teams } = game;
 
   const handleChangeTeam = async (team) => {
     playerSend({ type: 'CHANGE_TEAM', team, userID: id });
@@ -38,7 +36,7 @@ const App = (props) => {
     //   }
     // };
     // setHostState(hostState => ({ ...hostState, playState }));
-    gameSendGlobal({ type: 'START_GAME' });
+    gameSend({ type: 'START_GAME' });
   };
 
   return (
