@@ -102,6 +102,14 @@ const GameMachine = Machine(
         players: [],
         teams: {},
       },
+      play: {
+        team1: {
+          members: [],
+        },
+        team2: {
+          members: [],
+        },
+      },
       pusher,
       playerRefs: [],
     },
@@ -123,7 +131,7 @@ const GameMachine = Machine(
       },
       lobby: {
         on: {
-          START_GAME: { target: 'playing', actions: ['broadcastStartGame'] },
+          START_GAME: { target: 'inGame', actions: ['broadcastStartGame', 'derivePlayState'] },
           CHANGE_TEAM: {
             actions: ['changeTeam', 'broadcastGameState'],
           },
@@ -132,7 +140,55 @@ const GameMachine = Machine(
           },
         },
       },
-      playing: {},
+      inGame: {
+        initial: 'team1',
+        states: {
+          team1: {
+            initial: 'ready',
+            states: {
+              ready: {
+                after: {
+                  10_000: 'playing',
+                },
+              },
+              playing: {
+                after: {
+                  60_000: 'endOfTurn',
+                },
+              },
+              endOfTurn: {
+                type: 'final',
+              },
+            },
+            entry: {},
+            onDone: {
+              target: 'team2',
+            },
+          },
+          team2: {
+            initial: 'ready',
+            states: {
+              ready: {
+                after: {
+                  10_000: 'playing',
+                },
+              },
+              playing: {
+                after: {
+                  60_000: 'endOfTurn',
+                },
+              },
+              endOfTurn: {
+                type: 'final',
+              },
+            },
+            entry: {},
+            onDone: {
+              target: 'team1',
+            },
+          },
+        },
+      },
     },
   },
   {
@@ -154,11 +210,22 @@ const GameMachine = Machine(
         }),
         { to: 'client' }
       ),
+      derivePlayState: assign({
+        play: (ctx, event) => {
+          return {
+            team1: {
+              members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 1'),
+              lastPlayed: undefined,
+            },
+            team2: {
+              members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 2'),
+              lastPlayed: undefined,
+            },
+          };
+        },
+      }),
       generateGameID: assign({
         gameID: (ctx, event) => event.gameID,
-      }),
-      subscribeToGameChannel: assign({
-        channel: (ctx, event) => ctx.pusher.subscribe(`${ctx.gameID}-host-events`),
       }),
       changeTeam: assign({
         game: (ctx, event) => {

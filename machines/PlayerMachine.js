@@ -137,7 +137,15 @@ export const PlayerMachine = Machine({
         },
       },
     },
-    playing: {},
+    playing: {
+      initial: 'idle',
+      states: {
+        idle: {},
+        drawing: {},
+        guessing: {},
+        spectating: {},
+      },
+    },
   },
   actions: {
     connectToGame: send('CONNECT_TO_GAME', { to: 'client' }),

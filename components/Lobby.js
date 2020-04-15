@@ -19,23 +19,6 @@ const App = (props) => {
 
   // host only
   const handleStartGame = () => {
-    // const players = Object.keys(gameState.teams);
-    // let currentPlayer = undefined;
-    // players.forEach(player => {
-    //   if (gameState.teams[player] === 'Team 1') {
-    //     currentPlayer = player;
-    //   }
-    // });
-    // const playState = {
-    //   // first player in team 1
-    //   currentPlayer,
-    //   currentTeam: 'Team 1',
-    //   previous: {
-    //     team1: undefined,
-    //     team2: undefined
-    //   }
-    // };
-    // setHostState(hostState => ({ ...hostState, playState }));
     gameSend({ type: 'START_GAME' });
   };
 
