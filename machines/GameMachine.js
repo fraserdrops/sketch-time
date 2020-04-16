@@ -54,7 +54,7 @@ const ClientMachine = Machine({
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(event),
+                body: JSON.stringify({ ...event, gameID: ctx.gameID }),
               });
               if (!res.ok) {
                 console.error('event not sent');
@@ -148,47 +148,18 @@ const GameMachine = Machine(
             states: {
               yoza: {
                 after: {
-                  3000: 'ready',
+                  10: 'ready',
                 },
               },
               ready: {
                 // assign new player and broadcast to the players through the socket
-                entry: [
-                  'deriveTeam1Turn',
-                  send(
-                    (ctx, event) => {
-                      const { currentPlayer, team1, team2 } = ctx.play;
-                      const playerEvents = {};
-                      playerEvents[currentPlayer] = {
-                        type: 'DRAW',
-                        word: 'cheese',
-                      };
-
-                      team1.members.forEach((member) => {
-                        if (member !== currentPlayer) {
-                          playerEvents[member] = {
-                            type: 'GUESS',
-                          };
-                        }
-                      });
-
-                      team2.members.forEach((member) => {
-                        if (member !== currentPlayer) {
-                          playerEvents[member] = {
-                            type: 'SPECTATE',
-                          };
-                        }
-                      });
-                      return { type: 'TEAM_1_TURN', gameID: ctx.gameID, playerEvents };
-                    },
-                    { to: 'client' }
-                  ),
-                ],
+                entry: ['deriveTeam1Turn', 'broadcastTeam1Turn', 'broadcastPreTurn'],
                 after: {
                   10000: 'playing',
                 },
               },
               playing: {
+                entry: ['broadcastTurn'],
                 after: {
                   60000: 'endOfTurn',
                 },
@@ -246,47 +217,36 @@ const GameMachine = Machine(
           };
         },
       }),
-      broadcastTeam1Turn: send((ctx, event) => {
-        console.log(ctx.play);
+      broadcastPreTurn: send('PRE_TURN', { to: 'client' }),
+      broadcastTurn: send('TURN', { to: 'client' }),
+      broadcastTeam1Turn: send(
+        (ctx, event) => {
+          const { currentPlayer, team1, team2 } = ctx.play;
+          const playerEvents = {};
+          playerEvents[currentPlayer] = {
+            type: 'DRAW',
+            word: 'cheese',
+          };
 
-        const { currentPlayer, team1, team2 } = ctx.play;
-        const playerEvents = {};
-        playerEvents[currentPlayer] = {
-          type: 'DRAW',
-          word: 'cheese',
-        };
+          team1.members.forEach((member) => {
+            if (member !== currentPlayer) {
+              playerEvents[member] = {
+                type: 'GUESS',
+              };
+            }
+          });
 
-        team1.members.forEach((member) => {
-          if (member !== currentPlayer) {
-            playerEvents[member] = {
-              type: 'GUESS',
-            };
-          }
-        });
-
-        team2.members.forEach((member) => {
-          if (member !== currentPlayer) {
-            playerEvents[member] = {
-              type: 'SPECTATE',
-            };
-          }
-        });
-        console.log(playerEvents);
-
-        console.log('BROADCAST TEAM !', {
-          type: 'TEAM_1_TURN',
-          gameID: ctx.gameID,
-          play: ctx.play,
-        });
-        return (
-          {
-            type: 'TEAM_1_TURN',
-            gameID: ctx.gameID,
-            play: ctx.play,
-          },
-          { to: 'client' }
-        );
-      }),
+          team2.members.forEach((member) => {
+            if (member !== currentPlayer) {
+              playerEvents[member] = {
+                type: 'SPECTATE',
+              };
+            }
+          });
+          return { type: 'TEAM_1_TURN', gameID: ctx.gameID, playerEvents };
+        },
+        { to: 'client' }
+      ),
       broadcastGameState: send(
         (ctx, event) => ({
           type: 'GAME_UPDATE',

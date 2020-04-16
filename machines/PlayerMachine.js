@@ -71,6 +71,12 @@ const ClientMachine = Machine({
             }),
           ],
         },
+        PRE_TURN: {
+          actions: [sendParent((ctx, event) => event)],
+        },
+        TURN: {
+          actions: [sendParent((ctx, event) => event)],
+        },
         '*': {
           actions: send(
             (ctx, event) => ({
@@ -149,43 +155,64 @@ export const PlayerMachine = Machine({
       },
     },
     playing: {
-      initial: 'idle',
+      type: 'parallel',
       states: {
-        idle: {},
-        drawing: {
-          entry: [() => console.log('IM In drawing state')],
+        task: {
+          initial: 'idle',
+          states: {
+            idle: {},
+            drawing: {
+              entry: [() => console.log('IM In drawing state')],
+            },
+            guessing: {},
+            spectating: {},
+          },
+          on: {
+            PLAY_UPDATE: {
+              actions: [
+                send((ctx, event) => {
+                  console.log('PLAY UPDATE', event);
+                  return event.playerEvents[ctx.id];
+                }),
+              ],
+            },
+            DRAW: {
+              target: '.drawing',
+              actions: [
+                () => console.log('IM DRAWING'),
+                assign({
+                  play: (ctx, event) => {
+                    console.log(event);
+                    return { ...ctx.play, word: event.word };
+                  },
+                }),
+              ],
+            },
+            GUESS: {
+              target: '.guessing',
+              actions: [() => console.log('IM Gonna spectate')],
+            },
+            SPECTATE: {
+              target: '.spectating',
+              actions: [() => console.log('IM Gonna spectate')],
+            },
+          },
         },
-        guessing: {},
-        spectating: {},
-      },
-      on: {
-        PLAY_UPDATE: {
-          actions: [
-            send((ctx, event) => {
-              console.log('PLAY UPDATE', event);
-              return event.playerEvents[ctx.id];
-            }),
-          ],
-        },
-        DRAW: {
-          target: '.drawing',
-          actions: [
-            () => console.log('IM DRAWING'),
-            assign({
-              play: (ctx, event) => {
-                console.log(event);
-                return { ...ctx.play, word: event.word };
-              },
-            }),
-          ],
-        },
-        GUESS: {
-          target: '.guessing',
-          actions: [() => console.log('IM Gonna spectate')],
-        },
-        SPECTATE: {
-          target: '.spectating',
-          actions: [() => console.log('IM Gonna spectate')],
+        turn: {
+          initial: 'idle',
+          states: {
+            idle: {},
+            preTurn: {},
+            inTurn: {},
+          },
+          on: {
+            PRE_TURN: {
+              target: '.preTurn',
+            },
+            TURN: {
+              target: '.inTurn',
+            },
+          },
         },
       },
     },
