@@ -1,5 +1,5 @@
 import { Machine, assign, spawn, send, sendParent } from 'xstate';
-import Pusher from 'pusher-js';
+import { pusher } from '../pages/_app';
 import PlayerMachine from './PlayerMachine';
 
 function getRandomInt(min, max) {
@@ -7,11 +7,6 @@ function getRandomInt(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-let pusher = new Pusher('3a40fa337322e97d8d0c', {
-  cluster: 'ap4',
-  forceTLS: true,
-});
 
 const ClientMachine = Machine({
   id: 'client',
@@ -144,15 +139,9 @@ const GameMachine = Machine(
         initial: 'team1',
         states: {
           team1: {
-            initial: 'yoza',
+            initial: 'ready',
             states: {
-              yoza: {
-                after: {
-                  10: 'ready',
-                },
-              },
               ready: {
-                // assign new player and broadcast to the players through the socket
                 entry: ['deriveTeam1Turn', 'broadcastTeam1Turn', 'broadcastPreTurn'],
                 after: {
                   10000: 'playing',

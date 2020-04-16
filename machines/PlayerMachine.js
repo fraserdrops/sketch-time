@@ -1,11 +1,7 @@
 import { Machine, assign, send, sendParent } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import Pusher from 'pusher-js';
-
-let pusher = new Pusher('3a40fa337322e97d8d0c', {
-  cluster: 'ap4',
-  forceTLS: true,
-});
+import { pusher } from '../pages/_app';
 
 const ClientMachine = Machine({
   id: 'client',

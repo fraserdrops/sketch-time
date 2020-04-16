@@ -2,9 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 import '../styles.css';
 import Head from 'next/head';
+import Pusher from 'pusher-js';
 
 // import App from 'next/app'
 export const GameContext = React.createContext();
+
+export const pusher = new Pusher('3a40fa337322e97d8d0c', {
+  cluster: 'ap4',
+  forceTLS: true,
+});
 
 function MyApp({ Component, pageProps }) {
   const [userID] = useState(uuid());

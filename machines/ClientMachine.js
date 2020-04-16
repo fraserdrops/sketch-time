@@ -1,10 +1,5 @@
 import { Machine, assign, spawn, send } from 'xstate';
-import Pusher from 'pusher-js';
-
-let pusher = new Pusher('3a40fa337322e97d8d0c', {
-  cluster: 'ap4',
-  forceTLS: true,
-});
+import { pusher } from '../pages/_app';
 
 const ClientMachine = Machine(
   {
