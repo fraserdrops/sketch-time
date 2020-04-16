@@ -98,6 +98,8 @@ const GameMachine = Machine(
         teams: {},
       },
       play: {
+        currentPlayer: undefined,
+        currentTeam: undefined,
         team1: {
           members: [],
         },
@@ -136,52 +138,25 @@ const GameMachine = Machine(
         },
       },
       inGame: {
-        initial: 'team1',
+        initial: 'ready',
         states: {
-          team1: {
-            initial: 'ready',
-            states: {
-              ready: {
-                entry: ['deriveTeam1Turn', 'broadcastTeam1Turn', 'broadcastPreTurn'],
-                after: {
-                  10000: 'playing',
-                },
-              },
-              playing: {
-                entry: ['broadcastTurn'],
-                after: {
-                  60000: 'endOfTurn',
-                },
-              },
-              endOfTurn: {
-                type: 'final',
-              },
-            },
-            entry: {},
-            onDone: {
-              target: 'team2',
+          ready: {
+            entry: ['setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
+            after: {
+              2000: 'playing',
             },
           },
-          team2: {
-            initial: 'ready',
-            states: {
-              ready: {
-                after: {
-                  10000: 'playing',
-                },
-              },
-              playing: {
-                after: {
-                  60000: 'endOfTurn',
-                },
-              },
-              endOfTurn: {
-                type: 'final',
-              },
+          playing: {
+            entry: ['broadcastTurn'],
+            after: {
+              2000: 'endOfTurn',
             },
-            entry: {},
-            onDone: {
-              target: 'team1',
+          },
+          endOfTurn: {
+            on: {
+              '': {
+                target: 'ready',
+              },
             },
           },
         },
@@ -191,11 +166,9 @@ const GameMachine = Machine(
   {
     actions: {
       log: (ctx, event) => console.log(event),
-      deriveTeam1Turn: assign({
+      assignNextPlayer: assign({
         play: (ctx, event) => {
-          const {
-            team1: { members, lastPlayed },
-          } = ctx.play;
+          const { members, lastPlayed } = ctx.play[ctx.play.currentTeam];
           console.log('derive');
           const lastPlayedIndex = members.indexOf(lastPlayed);
           const nextPlayerIndex = lastPlayedIndex > members.length ? 0 : lastPlayedIndex + 1;
@@ -206,18 +179,28 @@ const GameMachine = Machine(
           };
         },
       }),
+      setTeam: assign({
+        play: (ctx, event) => {
+          console.log('START TURN');
+          const nextTeam = ctx.play.currentTeam && ctx.play.currentTeam === 'team1' ? 'team2' : 'team1';
+          return { ...ctx.play, currentTeam: nextTeam };
+        },
+      }),
       broadcastPreTurn: send('PRE_TURN', { to: 'client' }),
       broadcastTurn: send('TURN', { to: 'client' }),
-      broadcastTeam1Turn: send(
+      broadcastPlayState: send(
         (ctx, event) => {
-          const { currentPlayer, team1, team2 } = ctx.play;
+          const { currentPlayer, team1, team2, currentTeam } = ctx.play;
           const playerEvents = {};
           playerEvents[currentPlayer] = {
             type: 'DRAW',
             word: 'cheese',
           };
 
-          team1.members.forEach((member) => {
+          const currentTeamData = currentTeam === 'team2' ? team2 : team1;
+          const otherTeamData = currentTeam === 'team2' ? team1 : team2;
+          console.log(currentTeam, currentTeamData, otherTeamData);
+          currentTeamData.members.forEach((member) => {
             if (member !== currentPlayer) {
               playerEvents[member] = {
                 type: 'GUESS',
@@ -225,13 +208,14 @@ const GameMachine = Machine(
             }
           });
 
-          team2.members.forEach((member) => {
+          otherTeamData.members.forEach((member) => {
             if (member !== currentPlayer) {
               playerEvents[member] = {
                 type: 'SPECTATE',
               };
             }
           });
+          console.log('PLAYER EVENTS', playerEvents);
           return { type: 'TEAM_1_TURN', gameID: ctx.gameID, playerEvents };
         },
         { to: 'client' }
