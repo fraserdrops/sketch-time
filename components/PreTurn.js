@@ -24,6 +24,7 @@ const PreTurn = (props) => {
           left: 0,
           height: 30,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           width: '100%',

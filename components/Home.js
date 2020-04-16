@@ -18,11 +18,13 @@ const Home = (props) => {
   const { id, username } = playerState.context;
 
   const createGame = () => {
-    gameSend({ type: 'CREATE_GAME', gameID: hostGameID });
-    setTimeout(
-      () => playerSend({ type: 'JOIN_GAME', gameID: hostGameID, userID: id, username, player: playerState.context }),
-      1000
-    );
+    gameSend({
+      type: 'CREATE_GAME',
+      gameID: hostGameID,
+      // callback ensures the playersend is executed once the game is created, otherwise the event can be missed
+      callback: () =>
+        playerSend({ type: 'JOIN_GAME', gameID: hostGameID, userID: id, username, player: playerState.context }),
+    });
   };
 
   const joinGame = () => {

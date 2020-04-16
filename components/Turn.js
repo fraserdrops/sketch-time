@@ -8,6 +8,8 @@ const Turn = (props) => {
   const { word } = play;
 
   const drawing = playerState.value.playing.task === 'drawing';
+  const guessing = playerState.value.playing.task === 'guessing';
+  const spectating = playerState.value.playing.task === 'spectating';
 
   return (
     <div
@@ -33,12 +35,8 @@ const Turn = (props) => {
             You're Up! Draw <span style={{ fontWeight: 'bold' }}>{word}</span>
           </p>
         )}
-        {playerState.matches({ playing: 'guessing' }) && <p>You're Up! Guess what the word is</p>}
-        {/* {playerState.matches({ playing: 'spectating' }) && (
-          <p>
-            {gameState.players[gameState.playState.currentPlayer]} is Drawing {gameState.playState.word}
-          </p>
-        )} */}
+        {guessing && <p>You're Up! Guess what the word is</p>}
+        {spectating && <p>You're spectating the other team draw {word}</p>}
         {/* {host && <button onClick={handleEndTurn}>End Turn</button>} */}
       </div>
       {drawing && <Draw allowDrawing={drawing} />}

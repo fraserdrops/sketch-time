@@ -43,18 +43,16 @@ const ClientMachine = Machine({
 
           onEvent(async (event) => {
             console.log('BROADCAST', event);
-            setTimeout(async () => {
-              const res = await fetch('/api/game', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ ...event, gameID: ctx.gameID }),
-              });
-              if (!res.ok) {
-                console.error('event not sent');
-              }
-            }, 1000);
+            const res = await fetch('/api/game', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ ...event, gameID: ctx.gameID }),
+            });
+            if (!res.ok) {
+              console.error('event not sent');
+            }
           });
 
           return () => pusher.unsubscribe(`${ctx.gameID}-host-events`);
@@ -122,6 +120,10 @@ const GameMachine = Machine(
             actions: [
               'generateGameID',
               send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
+              (ctx, event) => {
+                console.log();
+                event.callback();
+              },
             ],
           },
         },
@@ -143,13 +145,13 @@ const GameMachine = Machine(
           ready: {
             entry: ['setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
             after: {
-              2000: 'playing',
+              5000: 'playing',
             },
           },
           playing: {
             entry: ['broadcastTurn'],
             after: {
-              2000: 'endOfTurn',
+              5000: 'endOfTurn',
             },
           },
           endOfTurn: {
