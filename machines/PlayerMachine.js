@@ -67,6 +67,9 @@ const ClientMachine = Machine({
             }),
           ],
         },
+        BEFORE_TURN: {
+          actions: [sendParent((ctx, event) => event)],
+        },
         PRE_TURN: {
           actions: [sendParent((ctx, event) => event)],
         },
@@ -195,13 +198,16 @@ export const PlayerMachine = Machine({
           },
         },
         turn: {
-          initial: 'idle',
+          initial: 'beforeTurn',
           states: {
-            idle: {},
+            beforeTurn: {},
             preTurn: {},
             inTurn: {},
           },
           on: {
+            BEFORE_TURN: {
+              target: '.beforeTurn',
+            },
             PRE_TURN: {
               target: '.preTurn',
             },

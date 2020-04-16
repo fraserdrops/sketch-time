@@ -1,7 +1,5 @@
 const Pusher = require('pusher');
-
 const { APP_ID: appId, KEY: key, SECRET: secret, CLUSTER: cluster } = process.env;
-
 const pusher = new Pusher({
   appId,
   key,

@@ -100,9 +100,11 @@ const GameMachine = Machine(
         currentTeam: undefined,
         team1: {
           members: [],
+          lastPlayed: undefined,
         },
         team2: {
           members: [],
+          lastPlayed: undefined,
         },
       },
       pusher,
@@ -140,10 +142,19 @@ const GameMachine = Machine(
         },
       },
       inGame: {
-        initial: 'ready',
+        initial: 'beforeTurn',
         states: {
-          ready: {
-            entry: ['setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
+          beforeTurn: {
+            entry: ['broadcastBeforeTurn'],
+            on: {
+              START_TURN: {
+                target: 'preTurn',
+                actions: ['log', 'setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
+              },
+            },
+          },
+          preTurn: {
+            // entry: ['setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
             after: {
               5000: 'playing',
             },
@@ -157,7 +168,8 @@ const GameMachine = Machine(
           endOfTurn: {
             on: {
               '': {
-                target: 'ready',
+                target: 'beforeTurn',
+                actions: ['cleanupTurn'],
               },
             },
           },
@@ -188,6 +200,19 @@ const GameMachine = Machine(
           return { ...ctx.play, currentTeam: nextTeam };
         },
       }),
+      cleanupTurn: assign({
+        play: (ctx, event) => {
+          const { currentTeam, currentPlayer } = ctx.play;
+          const currentTeamInfo = ctx.play[currentTeam];
+          console.log('CLEANUP TURN', {
+            ...ctx.play,
+            [currentTeam]: { ...currentTeamInfo, lastPlayed: currentPlayer },
+          });
+
+          return { ...ctx.play, [currentTeam]: { ...currentTeamInfo, lastPlayed: currentPlayer } };
+        },
+      }),
+      broadcastBeforeTurn: send('BEFORE_TURN', { to: 'client' }),
       broadcastPreTurn: send('PRE_TURN', { to: 'client' }),
       broadcastTurn: send('TURN', { to: 'client' }),
       broadcastPlayState: send(

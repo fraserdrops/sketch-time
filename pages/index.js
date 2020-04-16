@@ -15,13 +15,14 @@ const App = (props) => {
   const [gameState, gameSend] = useMachine(GameMachine);
   const isHost = !gameState.matches('ready');
   console.log(playerState);
+  console.log(gameState);
 
   return (
     <GameServiceContext.Provider value={[gameState, gameSend]}>
       <PlayerServiceContext.Provider value={[playerState, send]}>
         {playerState.matches('ready') && <Home />}
         {playerState.matches('lobby') && <Lobby isHost={isHost} />}
-        {playerState.matches('playing') && <Game />}
+        {playerState.matches('playing') && <Game host={isHost} />}
       </PlayerServiceContext.Provider>
     </GameServiceContext.Provider>
   );
