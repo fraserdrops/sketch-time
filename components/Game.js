@@ -3,6 +3,7 @@ import { PlayerServiceContext } from '../pages/index';
 import PreTurn from './PreTurn';
 import Turn from './Turn';
 import BeforeTurn from './BeforeTurn';
+import EndOfTurn from './EndOfTurn';
 
 const Game = (props) => {
   const [playerState, playerSend] = useContext(PlayerServiceContext);
@@ -16,6 +17,7 @@ const Game = (props) => {
       {playerState.value.playing.turn === 'beforeTurn' && <BeforeTurn />}
       {playerState.value.playing.turn === 'preTurn' && <PreTurn />}
       {playerState.value.playing.turn === 'inTurn' && <Turn />}
+      {playerState.value.playing.turn === 'endOfTurn' && <EndOfTurn />}
     </>
   );
 };

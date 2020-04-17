@@ -1,6 +1,8 @@
-import { Machine, assign, spawn, send, sendParent } from 'xstate';
+import { Machine, assign, spawn, send, sendParent, actions } from 'xstate';
 import { pusher } from '../pages/_app';
 import PlayerMachine from './PlayerMachine';
+import wordList from '../data/medium1';
+const { log } = actions;
 
 function getRandomInt(min, max) {
   min = Math.ceil(min);
@@ -100,10 +102,12 @@ const GameMachine = Machine(
         currentTeam: undefined,
         team1: {
           members: [],
+          points: 0,
           lastPlayed: undefined,
         },
         team2: {
           members: [],
+          points: 0,
           lastPlayed: undefined,
         },
       },
@@ -123,7 +127,6 @@ const GameMachine = Machine(
               'generateGameID',
               send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
               (ctx, event) => {
-                console.log();
                 event.callback();
               },
             ],
@@ -132,7 +135,11 @@ const GameMachine = Machine(
       },
       lobby: {
         on: {
-          START_GAME: { target: 'inGame', actions: ['broadcastStartGame', 'derivePlayState'] },
+          START_GAME: {
+            target: 'inGame',
+            actions: ['broadcastStartGame', 'derivePlayState'],
+            cond: 'playersFromBothTeams',
+          },
           CHANGE_TEAM: {
             actions: ['changeTeam', 'broadcastGameState'],
           },
@@ -145,29 +152,38 @@ const GameMachine = Machine(
         initial: 'beforeTurn',
         states: {
           beforeTurn: {
-            entry: ['broadcastBeforeTurn'],
+            entry: [
+              'broadcastBeforeTurn',
+              log((context, event) => `count: ${context}, event: ${event}`, 'Finish label'),
+              'broadcastPoints',
+            ],
             on: {
               START_TURN: {
                 target: 'preTurn',
-                actions: ['log', 'setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
+                actions: ['log', 'assignWord', 'setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
               },
             },
           },
           preTurn: {
             // entry: ['setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
             after: {
-              5000: 'playing',
+              1000: 'playing',
             },
           },
           playing: {
             entry: ['broadcastTurn'],
             after: {
-              5000: 'endOfTurn',
+              1000: 'endOfTurn',
             },
           },
           endOfTurn: {
+            entry: ['broadcastEndOfTurn'],
             on: {
-              '': {
+              SUCCESSFUL: {
+                target: 'beforeTurn',
+                actions: ['cleanupTurn', 'tallyPointsSuccess'],
+              },
+              UNSUCCESSFUL: {
                 target: 'beforeTurn',
                 actions: ['cleanupTurn'],
               },
@@ -179,13 +195,39 @@ const GameMachine = Machine(
   },
   {
     actions: {
+      tallyPointsSuccess: assign({
+        play: (ctx, event) => {
+          const currentTeamInfo = ctx.play[ctx.play.currentTeam];
+          const newCurrentTeamInfo = { ...currentTeamInfo, points: currentTeamInfo.points + 1 };
+          if (ctx.play.currentTeam)
+            return {
+              ...ctx.play,
+              [ctx.play.currentTeam]: newCurrentTeamInfo,
+            };
+        },
+      }),
       log: (ctx, event) => console.log(event),
+      assignWord: assign({
+        play: (ctx, event) => {
+          return {
+            ...ctx.play,
+            word: wordList[Math.floor(Math.random() * wordList.length)],
+          };
+        },
+      }),
+      broadcastPoints: send(
+        (ctx, event) => {
+          console.log(ctx);
+          return { type: 'POINTS_UPDATE', team1: ctx.play.team1.points, team2: ctx.play.team2.points };
+        },
+        { to: 'client' }
+      ),
       assignNextPlayer: assign({
         play: (ctx, event) => {
           const { members, lastPlayed } = ctx.play[ctx.play.currentTeam];
           console.log('derive');
           const lastPlayedIndex = members.indexOf(lastPlayed);
-          const nextPlayerIndex = lastPlayedIndex > members.length ? 0 : lastPlayedIndex + 1;
+          const nextPlayerIndex = lastPlayedIndex + 1 >= members.length ? 0 : lastPlayedIndex + 1;
           const nextPlayer = members[nextPlayerIndex];
           return {
             ...ctx.play,
@@ -204,24 +246,21 @@ const GameMachine = Machine(
         play: (ctx, event) => {
           const { currentTeam, currentPlayer } = ctx.play;
           const currentTeamInfo = ctx.play[currentTeam];
-          console.log('CLEANUP TURN', {
-            ...ctx.play,
-            [currentTeam]: { ...currentTeamInfo, lastPlayed: currentPlayer },
-          });
-
           return { ...ctx.play, [currentTeam]: { ...currentTeamInfo, lastPlayed: currentPlayer } };
         },
       }),
       broadcastBeforeTurn: send('BEFORE_TURN', { to: 'client' }),
       broadcastPreTurn: send('PRE_TURN', { to: 'client' }),
       broadcastTurn: send('TURN', { to: 'client' }),
+      broadcastEndOfTurn: send('END_OF_TURN', { to: 'client' }),
       broadcastPlayState: send(
         (ctx, event) => {
-          const { currentPlayer, team1, team2, currentTeam } = ctx.play;
+          const { currentPlayer, team1, team2, currentTeam, word } = ctx.play;
+          const playerDrawing = ctx.game.players[currentPlayer].username;
           const playerEvents = {};
           playerEvents[currentPlayer] = {
             type: 'DRAW',
-            word: 'cheese',
+            word,
           };
 
           const currentTeamData = currentTeam === 'team2' ? team2 : team1;
@@ -231,6 +270,7 @@ const GameMachine = Machine(
             if (member !== currentPlayer) {
               playerEvents[member] = {
                 type: 'GUESS',
+                playerDrawing: playerDrawing,
               };
             }
           });
@@ -239,6 +279,8 @@ const GameMachine = Machine(
             if (member !== currentPlayer) {
               playerEvents[member] = {
                 type: 'SPECTATE',
+                playerDrawing: playerDrawing,
+                word,
               };
             }
           });
@@ -269,10 +311,12 @@ const GameMachine = Machine(
             team1: {
               members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 1'),
               lastPlayed: undefined,
+              points: 0,
             },
             team2: {
               members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 2'),
               lastPlayed: undefined,
+              points: 0,
             },
           };
         },
@@ -306,6 +350,22 @@ const GameMachine = Machine(
           },
         ],
       }),
+    },
+    guards: {
+      playersFromBothTeams: (ctx, event) => {
+        let team1 = false;
+        let team2 = false;
+        Object.values(ctx.game.teams).forEach((team) => {
+          if (team === 'Team 1') {
+            team1 = true;
+          }
+
+          if (team === 'Team 2') {
+            team2 = true;
+          }
+        });
+        return team1 && team2;
+      },
     },
   }
 );

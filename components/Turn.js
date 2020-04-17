@@ -5,8 +5,8 @@ import { PlayerServiceContext } from '../pages/index';
 const Turn = (props) => {
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const { id: userID, username, game, gameID, play } = playerState.context;
-  const { word } = play;
-
+  const { word, playerDrawing } = play;
+  const { turn } = playerState.context;
   const drawing = playerState.value.playing.task === 'drawing';
   const guessing = playerState.value.playing.task === 'guessing';
   const spectating = playerState.value.playing.task === 'spectating';
@@ -35,9 +35,13 @@ const Turn = (props) => {
             You're Up! Draw <span style={{ fontWeight: 'bold' }}>{word}</span>
           </p>
         )}
-        {guessing && <p>You're Up! Guess what the word is</p>}
-        {spectating && <p>You're spectating the other team draw {word}</p>}
-        {/* {host && <button onClick={handleEndTurn}>End Turn</button>} */}
+        <p style={{ position: 'absolute', fontSize: 18, right: 10, top: 5 }}>{turn.countdown}</p>
+        {guessing && <p>You're up! Guess what {playerDrawing} is drawing</p>}
+        {spectating && (
+          <p>
+            You're spectating {playerDrawing} draw {word}
+          </p>
+        )}
       </div>
       {drawing && <Draw allowDrawing={drawing} />}
       {!drawing && <Draw allowDrawing={drawing} />}

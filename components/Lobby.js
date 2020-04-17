@@ -52,7 +52,11 @@ const App = (props) => {
             .filter((userID) => !teams[userID])
             .map((userID) => players[userID])}
         />
-        {host && <button onClick={() => handleStartGame()}>Create Game</button>}
+        {host && (
+          <button style={{ position: 'absolute', top: 5, right: 5 }} onClick={() => handleStartGame()}>
+            Start Game
+          </button>
+        )}
       </section>
     </div>
   );

@@ -76,6 +76,12 @@ const ClientMachine = Machine({
         TURN: {
           actions: [sendParent((ctx, event) => event)],
         },
+        END_OF_TURN: {
+          actions: [sendParent((ctx, event) => event)],
+        },
+        POINTS_UPDATE: {
+          actions: [sendParent((ctx, event) => event)],
+        },
         '*': {
           actions: send(
             (ctx, event) => ({
@@ -103,6 +109,20 @@ export const PlayerMachine = Machine({
     },
     play: {
       word: undefined,
+    },
+    points: {
+      team1: 0,
+      team2: 0,
+    },
+    preTurn: {
+      countdown: 10,
+      duration: 10,
+      interval: 1,
+    },
+    turn: {
+      countdown: 10,
+      duration: 10,
+      interval: 1,
     },
   },
   invoke: {
@@ -189,20 +209,102 @@ export const PlayerMachine = Machine({
             },
             GUESS: {
               target: '.guessing',
-              actions: [() => console.log('IM Gonna spectate')],
+              actions: [
+                assign({
+                  play: (ctx, event) => {
+                    console.log(event);
+                    return { ...ctx.play, playerDrawing: event.playerDrawing };
+                  },
+                }),
+              ],
             },
             SPECTATE: {
               target: '.spectating',
-              actions: [() => console.log('IM Gonna spectate')],
+              actions: [
+                assign({
+                  play: (ctx, event) => {
+                    console.log(event);
+                    return { ...ctx.play, word: event.word, playerDrawing: event.playerDrawing };
+                  },
+                }),
+              ],
             },
           },
         },
         turn: {
           initial: 'beforeTurn',
           states: {
-            beforeTurn: {},
-            preTurn: {},
-            inTurn: {},
+            beforeTurn: {
+              on: {
+                POINTS_UPDATE: {
+                  actions: assign({ points: (ctx, event) => ({ team1: event.team1, team2: event.team2 }) }),
+                },
+                PRE_TURN: {
+                  target: 'preTurn',
+                },
+              },
+            },
+            preTurn: {
+              invoke: {
+                src: (context) => (cb) => {
+                  const interval = setInterval(() => {
+                    cb('TICK');
+                  }, 1000 * context.preTurn.interval);
+
+                  return () => {
+                    clearInterval(interval);
+                  };
+                },
+              },
+              on: {
+                TICK: {
+                  actions: assign({
+                    preTurn: (context) => ({
+                      ...context.preTurn,
+                      countdown: context.preTurn.countdown - context.preTurn.interval,
+                    }),
+                  }),
+                },
+                TURN: {
+                  target: 'inTurn',
+                  actions: assign({ preTurn: (ctx) => ({ ...ctx.preTurn, countdown: ctx.preTurn.duration }) }),
+                },
+              },
+            },
+            inTurn: {
+              invoke: {
+                src: (context) => (cb) => {
+                  const interval = setInterval(() => {
+                    cb('TICK');
+                  }, 1000 * context.turn.interval);
+
+                  return () => {
+                    clearInterval(interval);
+                  };
+                },
+              },
+              on: {
+                TICK: {
+                  actions: assign({
+                    turn: (context) => ({
+                      ...context.turn,
+                      countdown: context.turn.countdown - context.turn.interval,
+                    }),
+                  }),
+                },
+                END_OF_TURN: {
+                  target: 'endOfTurn',
+                  actions: assign({ turn: (ctx) => ({ ...ctx.turn, countdown: ctx.turn.duration }) }),
+                },
+              },
+            },
+            endOfTurn: {
+              on: {
+                BEFORE_TURN: {
+                  target: 'beforeTurn',
+                },
+              },
+            },
           },
           on: {
             BEFORE_TURN: {

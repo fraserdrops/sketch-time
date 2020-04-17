@@ -6,6 +6,8 @@ const PreTurn = (props) => {
   const { id: userID, username, game, gameID, play } = playerState.context;
   const { word } = play;
 
+  const { preTurn } = playerState.context;
+  console.log(preTurn.countdown);
   const drawing = playerState.value.playing.task === 'drawing';
   const guessing = playerState.value.playing.task === 'guessing';
   const spectating = playerState.value.playing.task === 'spectating';
@@ -19,10 +21,6 @@ const PreTurn = (props) => {
     >
       <div
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          height: 30,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -30,11 +28,24 @@ const PreTurn = (props) => {
           width: '100%',
         }}
       >
-        <p>Game</p>
         <p>Get ready</p>
-        {drawing && <p>Your word is {word}</p>}
-        {guessing && <p>You'll be guessing the word</p>}
-        {spectating && <p>You're spectating this round</p>}
+        <p style={{ fontSize: 30, fontWeight: 600 }}>{preTurn.countdown}</p>
+        {drawing && (
+          <>
+            <p style={{ fontSize: 20 }}>You're drawing</p>
+            <p style={{ margin: 0, fontSize: 30, fontWeight: 500 }}>{word}</p>
+          </>
+        )}
+        {guessing && (
+          <p>
+            You'll be <span style={{ fontSize: 20, fontWeight: 500 }}>guessing</span> the word
+          </p>
+        )}
+        {spectating && (
+          <p>
+            You're <span style={{ fontSize: 20, fontWeight: 500 }}>spectating</span> this round
+          </p>
+        )}
       </div>
 
       <div></div>
