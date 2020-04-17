@@ -167,13 +167,13 @@ const GameMachine = Machine(
           preTurn: {
             // entry: ['setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
             after: {
-              1000: 'playing',
+              15000: 'playing',
             },
           },
           playing: {
             entry: ['broadcastTurn'],
             after: {
-              1000: 'endOfTurn',
+              60000: 'endOfTurn',
             },
           },
           endOfTurn: {
