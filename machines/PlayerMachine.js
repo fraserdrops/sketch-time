@@ -115,13 +115,13 @@ export const PlayerMachine = Machine({
       team2: 0,
     },
     preTurn: {
-      countdown: 10,
-      duration: 10,
+      countdown: 15,
+      duration: 15,
       interval: 1,
     },
     turn: {
-      countdown: 10,
-      duration: 10,
+      countdown: 60,
+      duration: 60,
       interval: 1,
     },
   },
