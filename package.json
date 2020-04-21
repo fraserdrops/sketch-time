@@ -20,7 +20,9 @@
   },
   "homepage": "https://github.com/FMcIntosh/pictionary-game#readme",
   "dependencies": {
+    "@xstate/immer": "^0.1.0",
     "@xstate/react": "^1.0.0-rc.3",
+    "immer": "^6.0.3",
     "inobounce": "^0.2.0",
     "next": "^9.3.2",
     "pusher": "^3.0.0",
@@ -28,7 +30,7 @@
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "uuid": "^7.0.2",
-    "xstate": "^4.8.0"
+    "xstate": "^4.9.1"
   },
   "devDependencies": {
     "@now/node": "^1.5.0",

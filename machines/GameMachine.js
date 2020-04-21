@@ -1,7 +1,8 @@
-import { Machine, assign, spawn, send, sendParent, actions } from 'xstate';
-import { pusher } from '../pages/_app';
-import PlayerMachine from './PlayerMachine';
+import { assign } from '@xstate/immer';
+import { actions, Machine, send, sendParent } from 'xstate';
 import wordList from '../data/medium1';
+import { pusher } from '../pages/_app';
+
 const { log } = actions;
 
 function getRandomInt(min, max) {
@@ -22,7 +23,7 @@ const ClientMachine = Machine({
       on: {
         CONNECT_TO_GAME: {
           target: 'connected',
-          actions: assign({ gameID: (ctx, event) => event.gameID }),
+          actions: assign((ctx, event) => (ctx.gameID = event.gameID)),
         },
       },
     },
@@ -94,7 +95,7 @@ const GameMachine = Machine(
     context: {
       gameID: undefined,
       game: {
-        players: [],
+        players: {},
         teams: {},
       },
       play: {
@@ -144,7 +145,7 @@ const GameMachine = Machine(
             actions: ['changeTeam', 'broadcastGameState'],
           },
           PLAYER_JOIN: {
-            actions: ['joinGame', 'broadcastGameState'],
+            actions: [log(), 'joinGame', 'broadcastGameState'],
           },
         },
       },
@@ -195,26 +196,13 @@ const GameMachine = Machine(
   },
   {
     actions: {
-      tallyPointsSuccess: assign({
-        play: (ctx, event) => {
-          const currentTeamInfo = ctx.play[ctx.play.currentTeam];
-          const newCurrentTeamInfo = { ...currentTeamInfo, points: currentTeamInfo.points + 1 };
-          if (ctx.play.currentTeam)
-            return {
-              ...ctx.play,
-              [ctx.play.currentTeam]: newCurrentTeamInfo,
-            };
-        },
+      tallyPointsSuccess: assign((ctx, event) => {
+        const currentTeamInfo = ctx.play[ctx.play.currentTeam];
+        const newCurrentTeamInfo = { ...currentTeamInfo, points: currentTeamInfo.points + 1 };
+        ctx.play[ctx.play.currentTeam] = newCurrentTeamInfo;
       }),
       log: (ctx, event) => console.log(event),
-      assignWord: assign({
-        play: (ctx, event) => {
-          return {
-            ...ctx.play,
-            word: wordList[Math.floor(Math.random() * wordList.length)],
-          };
-        },
-      }),
+      assignWord: assign((ctx, event) => (ctx.play.word = wordList[Math.floor(Math.random() * wordList.length)])),
       broadcastPoints: send(
         (ctx, event) => {
           console.log(ctx);
@@ -222,32 +210,20 @@ const GameMachine = Machine(
         },
         { to: 'client' }
       ),
-      assignNextPlayer: assign({
-        play: (ctx, event) => {
-          const { members, lastPlayed } = ctx.play[ctx.play.currentTeam];
-          console.log('derive');
-          const lastPlayedIndex = members.indexOf(lastPlayed);
-          const nextPlayerIndex = lastPlayedIndex + 1 >= members.length ? 0 : lastPlayedIndex + 1;
-          const nextPlayer = members[nextPlayerIndex];
-          return {
-            ...ctx.play,
-            currentPlayer: nextPlayer,
-          };
-        },
+      assignNextPlayer: assign((ctx, event) => {
+        const { members, lastPlayed } = ctx.play[ctx.play.currentTeam];
+        const lastPlayedIndex = members.indexOf(lastPlayed);
+        const nextPlayerIndex = lastPlayedIndex + 1 >= members.length ? 0 : lastPlayedIndex + 1;
+        const nextPlayer = members[nextPlayerIndex];
+        ctx.play.currentPlayer = nextPlayer;
       }),
-      setTeam: assign({
-        play: (ctx, event) => {
-          console.log('START TURN');
-          const nextTeam = ctx.play.currentTeam && ctx.play.currentTeam === 'team1' ? 'team2' : 'team1';
-          return { ...ctx.play, currentTeam: nextTeam };
-        },
+      setTeam: assign((ctx, event) => {
+        console.log('START TURN');
+        ctx.play.currentTeam = ctx.play.currentTeam && ctx.play.currentTeam === 'team1' ? 'team2' : 'team1';
       }),
-      cleanupTurn: assign({
-        play: (ctx, event) => {
-          const { currentTeam, currentPlayer } = ctx.play;
-          const currentTeamInfo = ctx.play[currentTeam];
-          return { ...ctx.play, [currentTeam]: { ...currentTeamInfo, lastPlayed: currentPlayer } };
-        },
+      cleanupTurn: assign((ctx, event) => {
+        const { currentTeam, currentPlayer } = ctx.play;
+        ctx.play[currentTeam].lastPlayed = currentPlayer;
       }),
       broadcastBeforeTurn: send('BEFORE_TURN', { to: 'client' }),
       broadcastPreTurn: send('PRE_TURN', { to: 'client' }),
@@ -305,50 +281,24 @@ const GameMachine = Machine(
         }),
         { to: 'client' }
       ),
-      derivePlayState: assign({
-        play: (ctx, event) => {
-          return {
-            team1: {
-              members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 1'),
-              lastPlayed: undefined,
-              points: 0,
-            },
-            team2: {
-              members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 2'),
-              lastPlayed: undefined,
-              points: 0,
-            },
-          };
-        },
-      }),
-      generateGameID: assign({
-        gameID: (ctx, event) => event.gameID,
-      }),
-      changeTeam: assign({
-        game: (ctx, event) => {
-          return {
-            ...ctx.game,
-            teams: { ...ctx.game.teams, [event.userID]: event.team },
-          };
-        },
-      }),
-      joinGame: assign({
-        game: (ctx, event) => {
-          return {
-            ...ctx.game,
-            players: { ...ctx.game.players, [event.userID]: { username: event.username } },
-          };
-        },
-      }),
-      playerRef: assign({
-        playerRefs: (context, event) => [
-          ...context.playerRefs,
-          {
-            player: event.player,
-            // add a new todoMachine actor with a unique name
-            ref: spawn(PlayerMachine.withContext(), `player-${event.id}`),
+      derivePlayState: assign((ctx, event) => {
+        ctx.play = {
+          team1: {
+            members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 1'),
+            lastPlayed: undefined,
+            points: 0,
           },
-        ],
+          team2: {
+            members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 2'),
+            lastPlayed: undefined,
+            points: 0,
+          },
+        };
+      }),
+      generateGameID: assign((ctx, event) => (ctx.gameID = event.gameID)),
+      changeTeam: assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)),
+      joinGame: assign((ctx, event) => {
+        ctx.game.players[event.userID] = { username: event.username };
       }),
     },
     guards: {

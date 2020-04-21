@@ -1,6 +1,6 @@
-import { Machine, assign, send, sendParent } from 'xstate';
+import { Machine, send, sendParent } from 'xstate';
 import { v4 as uuid } from 'uuid';
-import Pusher from 'pusher-js';
+import { assign } from '@xstate/immer';
 import { pusher } from '../pages/_app';
 
 const ClientMachine = Machine({
@@ -15,7 +15,7 @@ const ClientMachine = Machine({
       on: {
         CONNECT_TO_GAME: {
           target: 'connected',
-          actions: assign({ gameID: (ctx, event) => event.gameID }),
+          actions: assign((ctx, event) => (ctx.gameID = event.gameID)),
         },
       },
     },
@@ -133,14 +133,12 @@ export const PlayerMachine = Machine({
     ready: {
       on: {
         UPDATE_USERNAME: {
-          actions: assign({
-            username: (ctx, event) => event.username,
-          }),
+          actions: assign((ctx, event) => (ctx.username = event.username)),
         },
         JOIN_GAME: {
           target: 'lobby',
           actions: [
-            assign({ gameID: (ctx, event) => event.gameID }),
+            assign((ctx, event) => (ctx.gameID = event.gameID)),
             send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
             send((ctx, event) => ({ ...event, type: 'PLAYER_JOIN' }), { to: 'client' }),
           ],
@@ -151,25 +149,13 @@ export const PlayerMachine = Machine({
       on: {
         START_GAME: {
           target: 'playing',
-          actions: [
-            assign({
-              game: (ctx, event) => {
-                return event.game;
-              },
-            }),
-          ],
+          actions: [assign((ctx, event) => (ctx.game = event.game))],
         },
         CHANGE_TEAM: {
           actions: [send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM' }), { to: 'client' })],
         },
         GAME_UPDATE: {
-          actions: [
-            assign({
-              game: (ctx, event) => {
-                return event.game;
-              },
-            }),
-          ],
+          actions: [assign((ctx, event) => (ctx.game = event.game))],
         },
       },
     },
@@ -197,35 +183,18 @@ export const PlayerMachine = Machine({
             },
             DRAW: {
               target: '.drawing',
-              actions: [
-                () => console.log('IM DRAWING'),
-                assign({
-                  play: (ctx, event) => {
-                    console.log(event);
-                    return { ...ctx.play, word: event.word };
-                  },
-                }),
-              ],
+              actions: [assign((ctx, event) => (ctx.play.word = event.word))],
             },
             GUESS: {
               target: '.guessing',
-              actions: [
-                assign({
-                  play: (ctx, event) => {
-                    console.log(event);
-                    return { ...ctx.play, playerDrawing: event.playerDrawing };
-                  },
-                }),
-              ],
+              actions: [assign((ctx, event) => (ctx.play.playerDrawing = event.playerDrawing))],
             },
             SPECTATE: {
               target: '.spectating',
               actions: [
-                assign({
-                  play: (ctx, event) => {
-                    console.log(event);
-                    return { ...ctx.play, word: event.word, playerDrawing: event.playerDrawing };
-                  },
+                assign((ctx, event) => {
+                  ctx.play.word = event.word;
+                  ctx.play.playerDrawing = event.playerDrawing;
                 }),
               ],
             },
@@ -237,7 +206,10 @@ export const PlayerMachine = Machine({
             beforeTurn: {
               on: {
                 POINTS_UPDATE: {
-                  actions: assign({ points: (ctx, event) => ({ team1: event.team1, team2: event.team2 }) }),
+                  actions: assign((ctx, event) => {
+                    ctx.points.team1 = event.team1;
+                    ctx.points.team2 = event.team2;
+                  }),
                 },
                 PRE_TURN: {
                   target: 'preTurn',
@@ -258,16 +230,15 @@ export const PlayerMachine = Machine({
               },
               on: {
                 TICK: {
-                  actions: assign({
-                    preTurn: (context) => ({
-                      ...context.preTurn,
-                      countdown: context.preTurn.countdown - context.preTurn.interval,
-                    }),
+                  actions: assign((ctx, event) => {
+                    ctx.preTurn.countdown = ctx.preTurn.countdown - ctx.preTurn.interval;
                   }),
                 },
                 TURN: {
                   target: 'inTurn',
-                  actions: assign({ preTurn: (ctx) => ({ ...ctx.preTurn, countdown: ctx.preTurn.duration }) }),
+                  actions: assign((ctx, event) => {
+                    ctx.preTurn.countdown = ctx.preTurn.duration;
+                  }),
                 },
               },
             },
@@ -285,16 +256,15 @@ export const PlayerMachine = Machine({
               },
               on: {
                 TICK: {
-                  actions: assign({
-                    turn: (context) => ({
-                      ...context.turn,
-                      countdown: context.turn.countdown - context.turn.interval,
-                    }),
+                  actions: assign((ctx, event) => {
+                    ctx.turn.countdown = ctx.turn.countdown - ctx.turn.interval;
                   }),
                 },
                 END_OF_TURN: {
                   target: 'endOfTurn',
-                  actions: assign({ turn: (ctx) => ({ ...ctx.turn, countdown: ctx.turn.duration }) }),
+                  actions: assign((ctx, event) => {
+                    ctx.turn.countdown = ctx.turn.duration;
+                  }),
                 },
               },
             },
@@ -321,29 +291,7 @@ export const PlayerMachine = Machine({
       },
     },
   },
-  actions: {
-    connectToGame: send('CONNECT_TO_GAME', { to: 'client' }),
-    updateUsername: assign({
-      username: (ctx, event) => event.username,
-    }),
-    updateGame: assign({
-      game: (ctx, event) => {
-        return event.game;
-      },
-    }),
-    subscribeToGameChannel: assign({
-      gameID: (ctx, event) => ctx.pusher.subscribe(`${ctx.gameID}-host-events`),
-    }),
-    changeTeam: assign({
-      teams: (ctx, event) => ({ ...ctx.teams, [event.userID]: event.team }),
-    }),
-    joinGame: assign({
-      players: (ctx, event) => ({
-        ...ctx.players,
-        [event.userID]: { username: event.username },
-      }),
-    }),
-  },
+  actions: {},
 });
 
 export default PlayerMachine;
