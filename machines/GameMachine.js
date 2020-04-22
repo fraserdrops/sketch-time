@@ -176,6 +176,11 @@ const GameMachine = Machine(
             after: {
               60000: 'endOfTurn',
             },
+            on: {
+              END_TURN: {
+                target: 'endOfTurn',
+              },
+            },
           },
           endOfTurn: {
             entry: ['broadcastEndOfTurn'],
@@ -261,7 +266,7 @@ const GameMachine = Machine(
             }
           });
           console.log('PLAYER EVENTS', playerEvents);
-          return { type: 'TEAM_1_TURN', gameID: ctx.gameID, playerEvents };
+          return { type: 'PLAY_UPDATE', gameID: ctx.gameID, playerEvents };
         },
         { to: 'client' }
       ),

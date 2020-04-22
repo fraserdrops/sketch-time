@@ -64,6 +64,7 @@ function MyApp({ Component, pageProps }) {
         style={{
           height: '100vh',
           width: '100vw',
+          overscrollBehaviorX: 'none',
         }}
       >
         <Head>

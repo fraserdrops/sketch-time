@@ -28,10 +28,10 @@ const ClientMachine = Machine({
             console.log('FROM GAME', event);
             if (Array.isArray(event)) {
               event.forEach((event) => {
-                callback(event);
+                callback({ type: 'TO_PARENT', event });
               });
             } else {
-              callback(event);
+              callback({ type: 'TO_PARENT', event });
             }
           });
 
@@ -53,34 +53,13 @@ const ClientMachine = Machine({
         },
       },
       on: {
-        GAME_UPDATE: {
-          actions: [sendParent((ctx, event) => event)],
-        },
-        START_GAME: {
-          actions: [sendParent((ctx, event) => event)],
-        },
-        TEAM_1_TURN: {
+        TO_PARENT: {
           actions: [
             sendParent((ctx, event) => {
-              console.log('TEAM  1 TURN RECEIVED', event);
-              return { ...event, type: 'PLAY_UPDATE' };
+              console.log('sent to machine, ', event, event.event);
+              return event.event;
             }),
           ],
-        },
-        BEFORE_TURN: {
-          actions: [sendParent((ctx, event) => event)],
-        },
-        PRE_TURN: {
-          actions: [sendParent((ctx, event) => event)],
-        },
-        TURN: {
-          actions: [sendParent((ctx, event) => event)],
-        },
-        END_OF_TURN: {
-          actions: [sendParent((ctx, event) => event)],
-        },
-        POINTS_UPDATE: {
-          actions: [sendParent((ctx, event) => event)],
         },
         '*': {
           actions: send(

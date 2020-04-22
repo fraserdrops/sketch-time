@@ -6,17 +6,17 @@ import BeforeTurn from './BeforeTurn';
 import EndOfTurn from './EndOfTurn';
 
 const Game = (props) => {
+  const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const { id: userID, username, game, gameID, play } = playerState.context;
   const { players, teams } = game;
   const { word } = play;
 
-  console.log(playerState.value.playing.turn);
   return (
     <>
       {playerState.value.playing.turn === 'beforeTurn' && <BeforeTurn />}
       {playerState.value.playing.turn === 'preTurn' && <PreTurn />}
-      {playerState.value.playing.turn === 'inTurn' && <Turn />}
+      {playerState.value.playing.turn === 'inTurn' && <Turn host={host} />}
       {playerState.value.playing.turn === 'endOfTurn' && <EndOfTurn />}
     </>
   );
