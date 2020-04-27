@@ -2,9 +2,9 @@ import { useContext } from 'react';
 import { PlayerServiceContext, GameServiceContext } from '../pages/index';
 
 const BeforeTurn = (props) => {
+  const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const [gameState, gameSend] = useContext(GameServiceContext);
-  const host = !gameState.matches('ready');
 
   return (
     <div

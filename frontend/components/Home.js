@@ -9,6 +9,7 @@ function getRandomInt(min, max) {
 }
 
 const Home = (props) => {
+  const { setHost } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const [gameState, gameSend] = useContext(GameServiceContext);
   const [gameID, setGameID] = useState('');
@@ -22,9 +23,13 @@ const Home = (props) => {
       type: 'CREATE_GAME',
       gameID: hostGameID,
       // callback ensures the playersend is executed once the game is created, otherwise the event can be missed
-      callback: () =>
-        playerSend({ type: 'JOIN_GAME', gameID: hostGameID, userID: id, username, player: playerState.context }),
     });
+    setHost(true);
+
+    setTimeout(
+      () => playerSend({ type: 'JOIN_GAME', gameID: hostGameID, userID: id, username, player: playerState.context }),
+      3000
+    );
   };
 
   const joinGame = () => {

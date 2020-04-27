@@ -11,13 +11,14 @@ const Game = (props) => {
   const { id: userID, username, game, gameID, play } = playerState.context;
   const { players, teams } = game;
   const { word } = play;
+  console.log(host);
 
   return (
     <>
-      {playerState.value.playing.turn === 'beforeTurn' && <BeforeTurn />}
-      {playerState.value.playing.turn === 'preTurn' && <PreTurn />}
+      {playerState.value.playing.turn === 'beforeTurn' && <BeforeTurn host={host} />}
+      {playerState.value.playing.turn === 'preTurn' && <PreTurn host={host} />}
       {playerState.value.playing.turn === 'inTurn' && <Turn host={host} />}
-      {playerState.value.playing.turn === 'endOfTurn' && <EndOfTurn />}
+      {playerState.value.playing.turn === 'endOfTurn' && <EndOfTurn host={host} />}
     </>
   );
 };

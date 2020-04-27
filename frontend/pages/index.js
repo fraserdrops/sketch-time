@@ -12,17 +12,26 @@ export const ClientServiceContext = createContext();
 
 const App = (props) => {
   const [playerState, send, playerService] = useMachine(PlayerMachine);
-  const [gameState, gameSend] = useMachine(GameMachine);
-  const isHost = !gameState.matches('ready');
-  console.log(playerState);
-  console.log(gameState);
+  const [gameState, gameSend1] = useMachine(GameMachine);
+  const [host, setHost] = useState(false);
+
+  const gameSend = async (event) => {
+    const res = await fetch('http://localhost:8000/game', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ gameID: playerState.context.gameID, ...event }),
+    });
+    console.log(res);
+  };
 
   return (
     <GameServiceContext.Provider value={[gameState, gameSend]}>
       <PlayerServiceContext.Provider value={[playerState, send]}>
-        {playerState.matches('ready') && <Home />}
-        {playerState.matches('lobby') && <Lobby isHost={isHost} />}
-        {playerState.matches('playing') && <Game host={isHost} />}
+        {playerState.matches('ready') && <Home setHost={setHost} />}
+        {playerState.matches('lobby') && <Lobby host={host} />}
+        {playerState.matches('playing') && <Game host={host} />}
       </PlayerServiceContext.Provider>
     </GameServiceContext.Provider>
   );

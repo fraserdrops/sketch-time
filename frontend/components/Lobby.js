@@ -3,8 +3,7 @@ import { GameServiceContext, PlayerServiceContext } from '../pages/index';
 import JoinTeam from './JoinTeam';
 
 const App = (props) => {
-  const { myGameState, isHost } = props;
-  const host = isHost;
+  const { myGameState, host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const [gameState, gameSend] = useContext(GameServiceContext);
   if (!host) {
