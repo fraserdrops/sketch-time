@@ -19,6 +19,11 @@
     "node-fetch": "^2.6.0",
     "pusher": "^3.0.1",
     "pusher-js": "^5.1.1",
+    "uuid": "^7.0.3",
     "xstate": "^4.9.1"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-plugin-node": "^11.1.0"
   }
 }

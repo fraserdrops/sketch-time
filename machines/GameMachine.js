@@ -1,5 +1,8 @@
 const { assign } = require('@xstate/immer');
-const { actions, Machine, send, sendParent } = require('xstate');
+const { actions, Machine, send, sendParent, spawn } = require('xstate');
+const { playerMachine } = require('./PlayerMachine');
+
+const { pure } = actions;
 // const wordList = require('../data/medium1');
 const wordList = ['chees'];
 
@@ -122,7 +125,7 @@ const GameMachine = Machine(
         },
       },
       pusher,
-      playerRefs: [],
+      playerRefs: {},
     },
     invoke: {
       id: 'client',
@@ -136,6 +139,23 @@ const GameMachine = Machine(
             actions: [
               'generateGameID',
               send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
+              assign((ctx, event) => {
+                ctx.game.players[event.playerID] = {
+                  ref: spawn(
+                    playerMachine.withContext({
+                      ...playerMachine.context,
+                      id: event.playerID,
+                      username: event.username,
+                    })
+                  ),
+                  id: event.playerID,
+                  username: event.username,
+                };
+              }),
+              send((ctx, event) => ({ type: 'JOIN_GAME', gameID: event.gameID, host: true }), {
+                to: (ctx, event) => ctx.game.players[event.playerID].ref,
+              }),
+              (ctx, event) => console.log('ceate game', ctx, event),
               (ctx, event) => {
                 event.callback();
               },
@@ -151,10 +171,24 @@ const GameMachine = Machine(
             cond: 'playersFromBothTeams',
           },
           CHANGE_TEAM: {
-            actions: ['changeTeam', 'broadcastGameState'],
+            actions: [
+              (ctx) => console.log('CHANGE TEAMS', ctx.game),
+              assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)),
+              'broadcastGameState',
+            ],
           },
           PLAYER_JOIN: {
-            actions: [log(), 'joinGame', 'broadcastGameState'],
+            actions: [
+              log(),
+              assign((ctx, event) => {
+                ctx.game.players[event.playerID] = {
+                  ref: spawn(playerMachine),
+                  id: event.playerID,
+                  username: event.username,
+                };
+              }),
+              'broadcastGameState',
+            ],
           },
         },
       },
@@ -287,6 +321,13 @@ const GameMachine = Machine(
         }),
         { to: 'client' }
       ),
+      broadcastStartGame: pure((context, event) => {
+        // I could in theory broadcast this to all players at once
+        // but instead I"m sending it through the player machine as an intermediary
+        return Object.values(context.game.players).map(({ ref }) => {
+          return send('GAME_UPATE', { to: ref });
+        });
+      }),
       broadcastStartGame: send(
         (ctx, event) => ({
           type: 'START_GAME',
@@ -311,9 +352,6 @@ const GameMachine = Machine(
       }),
       generateGameID: assign((ctx, event) => (ctx.gameID = event.gameID)),
       changeTeam: assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)),
-      joinGame: assign((ctx, event) => {
-        ctx.game.players[event.userID] = { username: event.username };
-      }),
     },
     guards: {
       playersFromBothTeams: (ctx, event) => {
