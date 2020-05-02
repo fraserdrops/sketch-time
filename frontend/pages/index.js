@@ -12,6 +12,7 @@ export const ClientServiceContext = createContext();
 
 const App = (props) => {
   const [playerState, send, playerService] = useMachine(PlayerMachine);
+  const { player } = playerState.context;
   const [gameState, gameSend1] = useMachine(GameMachine);
   const [host, setHost] = useState(false);
 
@@ -29,8 +30,8 @@ const App = (props) => {
   return (
     <GameServiceContext.Provider value={[gameState, gameSend]}>
       <PlayerServiceContext.Provider value={[playerState, send]}>
-        {playerState.matches('ready') && <Home setHost={setHost} />}
-        {playerState.matches('lobby') && <Lobby host={host} />}
+        {player.state === 'ready' && <Home setHost={setHost} />}
+        {player.state === 'lobby' && <Lobby host={host} />}
         {playerState.matches('playing') && <Game host={host} />}
       </PlayerServiceContext.Provider>
     </GameServiceContext.Provider>
