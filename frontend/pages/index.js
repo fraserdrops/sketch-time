@@ -12,9 +12,8 @@ export const ClientServiceContext = createContext();
 
 const App = (props) => {
   const [playerState, send, playerService] = useMachine(PlayerMachine);
-  const { player } = playerState.context;
+  const { player, host } = playerState.context;
   const [gameState, gameSend1] = useMachine(GameMachine);
-  const [host, setHost] = useState(false);
 
   const gameSend = async (event) => {
     const res = await fetch('http://localhost:8000/game', {
@@ -30,8 +29,8 @@ const App = (props) => {
   return (
     <GameServiceContext.Provider value={[gameState, gameSend]}>
       <PlayerServiceContext.Provider value={[playerState, send]}>
-        {player.state === 'ready' && <Home setHost={setHost} />}
-        {player.state === 'lobby' && <Lobby host={host} />}
+        {playerState.matches('ready') && <Home />}
+        {playerState.matches('lobby') && <Lobby host={host} />}
         {playerState.matches('playing') && <Game host={host} />}
       </PlayerServiceContext.Provider>
     </GameServiceContext.Provider>

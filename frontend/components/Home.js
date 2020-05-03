@@ -9,9 +9,8 @@ function getRandomInt(min, max) {
 }
 
 const Home = (props) => {
-  const { setHost } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  // const [gameState, gameSend] = useContext(GameServiceContext);
+  const [gameState, gameSend] = useContext(GameServiceContext);
   const [gameID, setGameID] = useState('');
 
   const hostGameID = getRandomInt(1000, 9999);
@@ -26,7 +25,6 @@ const Home = (props) => {
       username,
       // callback ensures the playersend is executed once the game is created, otherwise the event can be missed
     });
-    setHost(true);
   };
 
   const joinGame = () => {
