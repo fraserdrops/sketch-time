@@ -45,7 +45,7 @@ const Turn = (props) => {
             You're spectating {playerDrawing} draw {word}
           </p>
         )}
-        {host && <button onClick={() => gameSend('END_TURN')}>End turn</button>}
+        {host && <button onClick={() => gameSend({ type: 'END_TURN' })}>End turn</button>}
       </div>
       {drawing && <Draw allowDrawing={drawing} />}
       {!drawing && <Draw allowDrawing={drawing} />}

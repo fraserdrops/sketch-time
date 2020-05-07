@@ -306,12 +306,6 @@ const PlayerMachine = Machine({
           states: {
             beforeTurn: {
               on: {
-                POINTS_UPDATE: {
-                  actions: assign((ctx, event) => {
-                    ctx.points.team1 = event.team1;
-                    ctx.points.team2 = event.team2;
-                  }),
-                },
                 PRE_TURN: {
                   target: 'preTurn',
                 },
@@ -373,19 +367,11 @@ const PlayerMachine = Machine({
               on: {
                 BEFORE_TURN: {
                   target: 'beforeTurn',
+                  actions: assign((ctx, event) => {
+                    ctx.points = event.points;
+                  }),
                 },
               },
-            },
-          },
-          on: {
-            BEFORE_TURN: {
-              target: '.beforeTurn',
-            },
-            PRE_TURN: {
-              target: '.preTurn',
-            },
-            TURN: {
-              target: '.inTurn',
             },
           },
         },

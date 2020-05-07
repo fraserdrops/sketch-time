@@ -3,6 +3,7 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 8000;
 const { gameMachine } = require('./machines/GameMachine');
+const { gameManagerMachine } = require('./machines/GameManagerMachine');
 const { Machine, interpret } = require('xstate');
 var cors = require('cors');
 var bodyParser = require('body-parser');
@@ -13,7 +14,7 @@ app.use(
     extended: true,
   })
 );
-const service = interpret(gameMachine)
+const service = interpret(gameManagerMachine)
   .onTransition((state) => {
     console.log('service', state.value);
   })
@@ -22,11 +23,6 @@ const service = interpret(gameMachine)
 // Send events
 
 app.get('/', (req, res) => res.send('Hello World!'));
-
-ctx = { gameID: '1675' };
-// pusher.trigger(`${ctx.gameID}-host-events`, 'events', {
-//   message: 'hello world',
-// });
 
 app.get('/create', (req, res) => {
   console.log('yoza');

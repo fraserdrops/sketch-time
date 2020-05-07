@@ -30,64 +30,45 @@ const ClientMachine = Machine({
     pusherClient,
   },
   states: {
-    idle: {
-      on: {
-        JOIN_GAME: {
-          target: 'connected',
-
-          actions: [
-            assign((ctx, event) => {
-              ctx.gameID = event.gameID;
-              ctx.playerID = event.playerID;
-            }),
-            (ctx, event) => console.log(event),
-          ],
-        },
-      },
+    idle: {},
+  },
+  on: {
+    TO_PARENT: {
+      actions: [
+        sendParent((ctx, event) => {
+          return event.event;
+        }),
+      ],
     },
-    connected: {
-      invoke: {
-        id: 'socket',
-        src: (context, event) => (callback, onEvent) => {
-          const channel = pusherClient.subscribe(`${context.gameID}-${context.playerID}-player-events`);
-          console.log('client engaged', `${context.gameID}-${context.playerID}-player-events`);
-          channel.bind('remoteEvents', async (event) => {
-            console.log('RECIEVED FROM LOCAL PLAYER', event);
-            if (Array.isArray(event)) {
-              event.forEach((event) => {
-                callback({ type: 'TO_PARENT', event });
-              });
-            } else {
-              callback({ type: 'TO_PARENT', event });
-            }
+    '*': {
+      actions: send(
+        (ctx, event) => ({
+          ...event,
+        }),
+        { to: 'socket' }
+      ),
+    },
+  },
+  invoke: {
+    id: 'socket',
+    src: (context, event) => (callback, onEvent) => {
+      const channel = pusherClient.subscribe(`${context.gameID}-${context.playerID}-player-events`);
+      channel.bind('remoteEvents', async (event) => {
+        if (Array.isArray(event)) {
+          event.forEach((event) => {
+            callback({ type: 'TO_PARENT', event });
           });
+        } else {
+          callback({ type: 'TO_PARENT', event });
+        }
+      });
 
-          onEvent(async (event) => {
-            console.log('REMOTE PLAYER TO LOCAL PLAYER', event, `${context.gameID}-${context.playerID}-events`);
-            pusher.trigger(`${context.gameID}-${context.playerID}-events`, 'events', event, (err) => {});
-          });
+      onEvent(async (event) => {
+        console.log('REMOTE PLAYER TO LOCAL', event);
+        pusher.trigger(`${context.gameID}-${context.playerID}-events`, 'events', event, (err) => {});
+      });
 
-          return () => pusherClient.unsubscribe(`${context.gameID}-game-events`);
-        },
-      },
-      on: {
-        TO_PARENT: {
-          actions: [
-            sendParent((ctx, event) => {
-              console.log('sent to machine, ', event, event.event);
-              return event.event;
-            }),
-          ],
-        },
-        '*': {
-          actions: send(
-            (ctx, event) => ({
-              ...event,
-            }),
-            { to: 'socket' }
-          ),
-        },
-      },
+      return () => pusherClient.unsubscribe(`${context.gameID}-game-events`);
     },
   },
 });
