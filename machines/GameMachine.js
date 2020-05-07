@@ -53,6 +53,7 @@ const ClientMachine = Machine({
         id: 'socket',
         src: (ctx, event) => (callback, onEvent) => {
           const channel = pusherClient.subscribe(`${ctx.gameID}-host-events`);
+
           channel.bind('events', async (event) => {
             if (Array.isArray(event)) {
               event.forEach((event) => {
@@ -64,6 +65,7 @@ const ClientMachine = Machine({
           });
 
           onEvent(async (event) => {
+            console.log('send events to player', event);
             pusher.trigger(`${event.gameID}-game-events`, 'events', event, (err) => {});
           });
 
@@ -95,12 +97,35 @@ const ClientMachine = Machine({
   },
 });
 
+const spawnPlayer = assign((ctx, event) => {
+  ctx.game.players[event.playerID] = {
+    ref: spawn(
+      playerMachine.withContext({
+        ...playerMachine.context,
+        playerID: event.playerID,
+        gameID: event.gameID,
+        username: event.username,
+      })
+    ),
+    playerID: event.playerID,
+    username: event.username,
+  };
+});
+
+const sendJoinGame = send(
+  (ctx, event) => ({ type: 'JOIN_GAME', gameID: event.gameID, playerID: event.playerID, host: true }),
+  {
+    to: (ctx, event) => ctx.game.players[ctx.hostID].ref,
+  }
+);
+
 const GameMachine = Machine(
   {
     id: 'game',
     initial: 'ready',
     context: {
       gameID: undefined,
+      hostID: undefined,
       game: {
         players: {},
         teams: {},
@@ -133,26 +158,19 @@ const GameMachine = Machine(
             target: 'lobby',
             actions: [
               'generateGameID',
-              send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
               assign((ctx, event) => {
-                ctx.game.players[event.playerID] = {
-                  ref: spawn(playerMachine),
-                  id: event.playerID,
-                  username: event.username,
-                };
+                ctx.hostID = event.playerID;
               }),
-              send(
-                (ctx, event) => ({ type: 'JOIN_GAME', gameID: event.gameID, playerID: event.playerID, host: true }),
-                {
-                  to: (ctx, event) => ctx.game.players[event.playerID].ref,
-                }
-              ),
+              send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
+              spawnPlayer,
+              sendJoinGame,
               'broadcastGameState',
             ],
           },
         },
       },
       lobby: {
+        entry: [() => console.log('LOBBY')],
         on: {
           START_GAME: {
             target: 'inGame',
@@ -163,28 +181,7 @@ const GameMachine = Machine(
             actions: [assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)), 'broadcastGameState'],
           },
           PLAYER_JOIN: {
-            actions: [
-              assign((ctx, event) => {
-                ctx.game.players[event.playerID] = {
-                  ref: spawn(
-                    playerMachine.withContext({
-                      ...playerMachine.context,
-                      id: event.playerID,
-                      username: event.username,
-                    })
-                  ),
-                  id: event.playerID,
-                  username: event.username,
-                };
-              }),
-              send(
-                (ctx, event) => ({ type: 'JOIN_GAME', gameID: event.gameID, playerID: event.playerID, host: false }),
-                {
-                  to: (ctx, event) => ctx.game.players[event.playerID].ref,
-                }
-              ),
-              'broadcastGameState',
-            ],
+            actions: [log(), spawnPlayer, sendJoinGame, 'broadcastGameState'],
           },
         },
       },
@@ -192,11 +189,7 @@ const GameMachine = Machine(
         initial: 'beforeTurn',
         states: {
           beforeTurn: {
-            entry: [
-              'broadcastBeforeTurn',
-              log((context, event) => `count: ${context}, event: ${event}`, 'Finish label'),
-              'broadcastPoints',
-            ],
+            entry: ['broadcastBeforeTurn'],
             on: {
               START_TURN: {
                 target: 'preTurn',
@@ -206,7 +199,7 @@ const GameMachine = Machine(
           },
           preTurn: {
             after: {
-              15000: 'playing',
+              100: 'playing',
             },
           },
           playing: {
@@ -240,24 +233,15 @@ const GameMachine = Machine(
   {
     actions: {
       tallyPointsSuccess: assign((ctx, event) => {
-        const currentTeamInfo = ctx.play[ctx.play.currentTeam];
-        const newCurrentTeamInfo = { ...currentTeamInfo, points: currentTeamInfo.points + 1 };
-        ctx.play[ctx.play.currentTeam] = newCurrentTeamInfo;
+        ctx.play[ctx.play.currentTeam].points += 1;
       }),
       assignWord: assign((ctx, event) => (ctx.play.word = wordList[Math.floor(Math.random() * wordList.length)])),
-      broadcastPoints: send(
-        (ctx, event) => {
-          return { type: 'POINTS_UPDATE', team1: ctx.play.team1.points, team2: ctx.play.team2.points };
-        },
-        { to: 'client' }
-      ),
       assignNextPlayer: assign((ctx, event) => {
         const { members, lastPlayed } = ctx.play[ctx.play.currentTeam];
         const lastPlayedIndex = members.indexOf(lastPlayed);
         const nextPlayerIndex = lastPlayedIndex + 1 >= members.length ? 0 : lastPlayedIndex + 1;
         const nextPlayer = members[nextPlayerIndex];
         ctx.play.currentPlayer = nextPlayer;
-        console.log('assignNextPlayer', ctx, nextPlayer);
       }),
       setTeam: assign((ctx, event) => {
         ctx.play.currentTeam = ctx.play.currentTeam && ctx.play.currentTeam === 'team1' ? 'team2' : 'team1';
@@ -266,14 +250,15 @@ const GameMachine = Machine(
         const { currentTeam, currentPlayer } = ctx.play;
         ctx.play[currentTeam].lastPlayed = currentPlayer;
       }),
-      broadcastBeforeTurn: pure((context, event) => {
+      broadcastBeforeTurn: pure((ctx, event) => {
         // I could in theory broadcast this to all players at once
         // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(context.game.players).map(({ ref }) => {
+        return Object.values(ctx.game.players).map(({ ref }) => {
           return send(
-            (ctx, event) => ({
+            {
               type: 'BEFORE_TURN',
-            }),
+              points: { team1: ctx.play.team1.points, team2: ctx.play.team2.points },
+            },
             { to: ref }
           );
         });
