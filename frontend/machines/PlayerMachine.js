@@ -1,7 +1,8 @@
-import { Machine, send, sendParent, forwardTo } from 'xstate';
+import { Machine, send, sendParent, forwardTo, actions } from 'xstate';
 import { v4 as uuid } from 'uuid';
 import { assign } from '@xstate/immer';
 import { pusher } from '../pages/_app';
+const { log } = actions;
 
 const RemoteGame = Machine({
   id: 'remoteGame',
@@ -24,7 +25,7 @@ const RemoteGame = Machine({
         id: 'socket',
         src: (context, event) => (callback, onEvent) => {
           const channel = pusher.subscribe(`${context.gameID}-game-events`);
-          console.log('sub remote game');
+
           channel.bind('events', async (event) => {
             console.log('FROM GAME', event);
             if (Array.isArray(event)) {
@@ -45,10 +46,14 @@ const RemoteGame = Machine({
               },
               body: JSON.stringify({ ...event, gameID: context.gameID }),
             });
-            if (!res.ok) {
-              console.error('event not sent');
+            if (res.ok) {
+              res.json().then((json) => {
+                console.log(json);
+              });
             }
           });
+
+          callback({ type: 'TO_PARENT', event: { type: 'GAME_SOCKET_CONNECTED' } });
 
           return () => pusher.unsubscribe(`${context.gameID}-game-events`);
         },
@@ -100,7 +105,6 @@ const RemotePlayer = Machine({
         id: 'remotePlayer',
         src: (context, event) => (callback, onEvent) => {
           const channel = pusher.subscribe(`${context.gameID}-${context.playerID}-events`);
-          console.log('sub remote pplayer', `${context.gameID}-${context.playerID}-events`);
 
           channel.bind('events', async (event) => {
             console.log(' REMOTE PLAYER TO LOCAL PLAYER', event);
@@ -127,6 +131,8 @@ const RemotePlayer = Machine({
             }
           });
 
+          callback({ type: 'TO_PARENT', event: { type: 'PLAYER_SOCKET_CONNECTED' } });
+
           return () => pusher.unsubscribe(`${context.gameID}-game-events`);
         },
       },
@@ -152,6 +158,10 @@ const RemotePlayer = Machine({
   },
 });
 
+const getGameState = send((ctx, event) => ({ type: 'GET_GAME_STATE', gameID: ctx.gameID, playerID: ctx.id }), {
+  to: 'remotePlayer',
+});
+
 const PlayerMachine = Machine({
   id: 'player',
   initial: 'ready',
@@ -160,6 +170,7 @@ const PlayerMachine = Machine({
     username: undefined,
     team: undefined,
     gameID: undefined,
+    potentialGameID: undefined,
     host: false,
     game: {
       players: [],
@@ -195,54 +206,148 @@ const PlayerMachine = Machine({
   ],
   states: {
     ready: {
+      inital: 'ok',
+      states: {
+        ok: {},
+        errorJoiningGame: {},
+        errorCreatingGame: {},
+      },
       on: {
         UPDATE_USERNAME: {
           actions: assign((ctx, event) => (ctx.username = event.username)),
         },
         CREATE_GAME: {
-          target: 'lobby',
-          actions: [
-            () => console.log('creating game'),
-            assign((ctx, event) => {
-              ctx.gameID = event.gameID;
-              ctx.host = true;
-            }),
-            send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID, playerID: ctx.id }), {
-              to: 'remoteGame',
-            }),
-            send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID, playerID: ctx.id }), {
-              to: 'remotePlayer',
-            }),
-            send(
-              (ctx, event) => ({
-                type: 'CREATE_GAME',
-                gameID: event.gameID,
-                playerID: ctx.id,
-                username: event.username,
-              }),
-              {
-                to: 'remoteGame',
-                delay: 1000,
-              }
-            ),
-          ],
+          target: 'creatingGame',
         },
         JOIN_GAME: {
-          target: 'lobby',
+          target: 'joiningGame',
           actions: [
             assign((ctx, event) => {
-              ctx.gameID = event.gameID;
-              ctx.host = event.host;
+              ctx.potentialGameID = event.gameID;
+              ctx.host = false;
             }),
-            send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID, playerID: ctx.id }), {
-              to: 'remoteGame',
-            }),
-            send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID, playerID: ctx.id }), {
-              to: 'remotePlayer',
-            }),
-            send((ctx, event) => ({ ...event, type: 'PLAYER_JOIN' }), { to: 'remoteGame', delay: 1000 }),
           ],
         },
+      },
+    },
+    creatingGame: {
+      invoke: {
+        id: 'creatingGame',
+        src: (context, event) => {
+          return fetch('http://localhost:8000/game', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ type: 'CREATE_GAME', playerID: context.id, username: context.username }),
+          }).then((res) => {
+            if (res.ok) {
+              return res.json();
+            }
+          });
+        },
+        onDone: {
+          target: '#player.connectingToSockets',
+          actions: assign((ctx, event) => {
+            const { gameID } = event.data;
+            ctx.potentialGameID = gameID;
+            ctx.gameID = gameID;
+            ctx.host = true;
+          }),
+        },
+        onError: {
+          target: '#player.ready.errorCreatingGame',
+          actions: assign({ error: (context, event) => event.data }),
+        },
+      },
+    },
+    joiningGame: {
+      entry: [log()],
+      invoke: {
+        id: 'joiningGame',
+        src: (context, event) => {
+          return fetch('http://localhost:8000/game', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              type: 'PLAYER_JOIN',
+              gameID: context.potentialGameID,
+              playerID: context.id,
+              username: context.username,
+            }),
+          }).then((res) => {
+            console.log(res);
+            if (res.ok) {
+            } else {
+              throw new Error('FATALITY');
+            }
+          });
+        },
+        onError: {
+          target: '#player.ready.errorJoiningGame',
+          actions: console.log,
+        },
+        onDone: {
+          target: '#player.connectingToSockets',
+          actions: assign((ctx, event) => {
+            ctx.gameID = ctx.potentialGameID;
+            // const { gameID } = event.data;
+            // ctx.gameID = gameID;
+            // ctx.host = true;
+          }),
+        },
+        // onError: {
+        //   target: '#player.ready.errorJoiningGame',
+        //   actions: [() => console.log('ERROR'), assign({ error: (context, event) => event.data })],
+        // },
+      },
+    },
+    connectingToSockets: {
+      type: 'parallel',
+      states: {
+        connectingToGameSocket: {
+          initial: 'pending',
+          states: {
+            pending: {
+              entry: [
+                log(),
+                send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: ctx.gameID, playerID: ctx.id }), {
+                  to: 'remoteGame',
+                }),
+              ],
+              on: {
+                GAME_SOCKET_CONNECTED: 'connected',
+              },
+            },
+            connected: {
+              type: 'final',
+            },
+          },
+        },
+        connectingToPlayerSocket: {
+          initial: 'pending',
+          states: {
+            pending: {
+              entry: [
+                send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: ctx.gameID, playerID: ctx.id }), {
+                  to: 'remotePlayer',
+                }),
+              ],
+              on: {
+                PLAYER_SOCKET_CONNECTED: 'connected',
+              },
+            },
+            connected: {
+              type: 'final',
+            },
+          },
+        },
+      },
+      onDone: {
+        actions: [getGameState],
+        target: 'lobby',
       },
     },
     lobby: {

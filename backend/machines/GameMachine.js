@@ -165,12 +165,13 @@ const GameMachine = Machine(
               spawnPlayer,
               sendJoinGame,
               'broadcastGameState',
+              // down here so that it's sent after the game and player are created
+              // (ctx, event) => event.res.json({ gameID: event.gameID }),
             ],
           },
         },
       },
       lobby: {
-        entry: [() => console.log('LOBBY')],
         on: {
           START_GAME: {
             target: 'inGame',
@@ -178,10 +179,13 @@ const GameMachine = Machine(
             cond: 'playersFromBothTeams',
           },
           CHANGE_TEAM: {
-            actions: [assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)), 'broadcastGameState'],
+            actions: [log(), assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)), 'broadcastGameState'],
           },
           PLAYER_JOIN: {
             actions: [log(), spawnPlayer, sendJoinGame, 'broadcastGameState'],
+          },
+          GET_GAME_STATE: {
+            actions: [log(), 'broadcastGameState'],
           },
         },
       },

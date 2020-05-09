@@ -24,17 +24,8 @@ const service = interpret(gameManagerMachine)
 
 app.get('/', (req, res) => res.send('Hello World!'));
 
-app.get('/create', (req, res) => {
-  console.log('yoza');
-  service.send({ type: 'CREATE_GAME', gameID: '9844', callback: () => console.log('yoza') });
-
-  res.send('Hello World!');
-});
-
 app.post('/game', (req, res) => {
-  console.log('game', req.body);
-  service.send({ ...req.body, callback: () => console.log('yoza') });
-  res.send('Game j!');
+  service.send({ ...req.body, res });
 });
 
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`));

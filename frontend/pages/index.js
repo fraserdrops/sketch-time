@@ -16,15 +16,18 @@ const App = (props) => {
   const [gameState, gameSend1] = useMachine(GameMachine);
 
   const gameSend = async (event) => {
-    const res = await fetch('http://localhost:8000/game', {
+    console.log('sending to game');
+    fetch('http://localhost:8000/game', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify({ gameID: playerState.context.gameID, ...event }),
     });
-    console.log(res);
   };
+
+  console.log(playerState.value);
 
   return (
     <GameServiceContext.Provider value={[gameState, gameSend]}>

@@ -46,8 +46,11 @@ const Home = (props) => {
         />
         {username && (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <h4 style={{ marginBottom: 0 }}>Join Game</h4>
+              {playerState.value?.ready === 'errorJoiningGame' && (
+                <p style={{ position: 'absolute', right: 0, top: -10, color: 'red' }}>Game ID doesn't exist</p>
+              )}
               <p style={{ marginBottom: 0, marginTop: 0 }}>Enter Game Code</p>
               <input value={gameID} onChange={(e) => setGameID(e.target.value)} />
               <button onClick={() => joinGame()}>Join Game</button>

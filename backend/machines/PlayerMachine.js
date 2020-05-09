@@ -53,7 +53,9 @@ const ClientMachine = Machine({
     id: 'socket',
     src: (context, event) => (callback, onEvent) => {
       const channel = pusherClient.subscribe(`${context.gameID}-${context.playerID}-player-events`);
+      console.log('remote player sub', `${context.gameID}-${context.playerID}-player-events`);
       channel.bind('remoteEvents', async (event) => {
+        console.log('LOCAL TO REMOTE RECEIVED', event);
         if (Array.isArray(event)) {
           event.forEach((event) => {
             callback({ type: 'TO_PARENT', event });
@@ -67,6 +69,8 @@ const ClientMachine = Machine({
         console.log('REMOTE PLAYER TO LOCAL', event);
         pusher.trigger(`${context.gameID}-${context.playerID}-events`, 'events', event, (err) => {});
       });
+
+      console.log('remote playyer connected');
 
       return () => pusherClient.unsubscribe(`${context.gameID}-game-events`);
     },
