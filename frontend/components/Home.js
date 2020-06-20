@@ -34,7 +34,7 @@ const Home = (props) => {
   return (
     <div className='App'>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h1 style={{ margin: 0, marginTop: 10, fontWeight: 500 }}>Sketch Time</h1>
+        <h1 style={{ margin: 0, marginTop: 10, fontWeight: 500 }}>Sketch Times</h1>
         <h2 style={{ margin: 0, marginTop: 5, fontWeight: 400 }}>Covid19 Edition</h2>
         <p style={{ marginBottom: 0 }}>Username</p>
         <input

@@ -11,7 +11,6 @@ const App = (props) => {
   }
   const { id, username, game, gameID } = playerState.context;
   const { players, teams } = game;
-  console.log(game);
   const handleChangeTeam = async (team) => {
     playerSend({ type: 'CHANGE_TEAM', team, userID: id });
   };

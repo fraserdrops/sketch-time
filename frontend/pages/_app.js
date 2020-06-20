@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { v4 as uuid } from 'uuid';
-import '../styles.css';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import Pusher from 'pusher-js';
-
-// import App from 'next/app'
-export const GameContext = React.createContext();
+import React, { useEffect, useRef, useState } from 'react';
+import { State } from 'xstate';
+import '../styles.css';
 
 export const pusher = new Pusher('3a40fa337322e97d8d0c', {
   cluster: 'ap4',
@@ -13,16 +11,7 @@ export const pusher = new Pusher('3a40fa337322e97d8d0c', {
 });
 
 function MyApp({ Component, pageProps }) {
-  const [userID] = useState(uuid());
   const ref = useRef();
-
-  const [gameState, setGameState] = useState({
-    gameStatus: 'lobby',
-    players: {},
-    teams: {},
-    playState: { currentPlayer: undefined, currentTeam: undefined },
-    username: '',
-  });
 
   useEffect(() => {
     if (window) require('inobounce');
@@ -57,26 +46,45 @@ function MyApp({ Component, pageProps }) {
 
     preventPullToRefresh(ref.current);
   }, []);
+
+  const router = useRouter();
+  const [resolvedState, setResolvedState] = useState(undefined);
+  useEffect(() => {
+    // the query object doesn't populate on the first render
+    if (router.query.gameID) {
+      const savedGame = window.localStorage.getItem(router.query.gameID + '^' + router.query.playerID);
+      if (savedGame) {
+        const stateDefinition = JSON.parse(savedGame);
+        setResolvedState(stateDefinition);
+      } else {
+        setResolvedState(null);
+      }
+    } else if (!router.asPath.includes('gameID=')) {
+      // if it includes gameID, wait for the second render
+      // otherwise if there isn't there's no state to load
+      setResolvedState(null);
+    }
+  }, [router.query.gameID]);
+
   return (
-    <GameContext.Provider value={{ gameState, setGameState, userID }}>
-      <div
-        ref={ref}
-        style={{
-          height: '100vh',
-          width: '100vw',
-          overscrollBehaviorX: 'none',
-        }}
-      >
-        <Head>
-          <meta
-            name='viewport'
-            content='width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=0'
-            key='viewport'
-          />
-        </Head>
-        <Component {...pageProps} />
-      </div>
-    </GameContext.Provider>
+    <div
+      ref={ref}
+      style={{
+        height: '100vh',
+        width: '100vw',
+        overscrollBehaviorX: 'none',
+      }}
+    >
+      <Head>
+        <meta
+          name='viewport'
+          content='width=device-width, initial-scale=1.0, maximum-scale=1.0,user-scalable=0'
+          key='viewport'
+        />
+      </Head>
+      {resolvedState !== undefined && <Component {...pageProps} resolvedState={resolvedState} />}
+      {!resolvedState && <div />}
+    </div>
   );
 }
 
