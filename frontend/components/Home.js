@@ -1,30 +1,14 @@
 import { useContext, useState } from 'react';
-import { useMachine, useService } from '@xstate/react';
-import { GameServiceContext, PlayerServiceContext, ClientServiceContext } from '../pages/index';
-
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+import { PlayerServiceContext } from '../pages/index';
 
 const Home = (props) => {
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const [gameState, gameSend] = useContext(GameServiceContext);
   const [gameID, setGameID] = useState('');
-
-  const hostGameID = getRandomInt(1000, 9999);
 
   const { id, username } = playerState.context;
 
   const createGame = () => {
-    playerSend({
-      type: 'CREATE_GAME',
-      gameID: hostGameID,
-      playerID: id,
-      username,
-      // callback ensures the playersend is executed once the game is created, otherwise the event can be missed
-    });
+    playerSend('CREATE_GAME');
   };
 
   const joinGame = () => {

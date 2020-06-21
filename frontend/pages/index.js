@@ -3,12 +3,10 @@ import { useMachine } from '@xstate/react';
 import Game from '../components/Game';
 import Home from '../components/Home';
 import Lobby from '../components/Lobby';
-import GameMachine from '../machines/GameMachine';
 import PlayerMachine from '../machines/PlayerMachine';
 import { useEffect, createContext, useState } from 'react';
 import { useRouter } from 'next/router';
 
-export const GameServiceContext = createContext();
 export const PlayerServiceContext = createContext();
 export const ClientServiceContext = createContext();
 
@@ -20,7 +18,6 @@ const App = (props) => {
     state: resolvedState,
   });
   const { player, host, gameID, id } = playerState.context;
-  const [gameState, gameSend1] = useMachine(GameMachine);
   console.log(playerState);
   useEffect(() => {
     // Always do navigations after the first render
@@ -55,13 +52,11 @@ const App = (props) => {
   };
 
   return (
-    <GameServiceContext.Provider value={[gameState, gameSend]}>
-      <PlayerServiceContext.Provider value={[playerState, send]}>
-        {playerState.matches('ready') && <Home />}
-        {playerState.matches('lobby') && <Lobby host={host} />}
-        {playerState.matches('playing') && <Game host={host} />}
-      </PlayerServiceContext.Provider>
-    </GameServiceContext.Provider>
+    <PlayerServiceContext.Provider value={[playerState, send]}>
+      {playerState.matches('ready') && <Home />}
+      {playerState.matches('lobby') && <Lobby host={host} />}
+      {playerState.matches('playing') && <Game host={host} />}
+    </PlayerServiceContext.Provider>
   );
 };
 

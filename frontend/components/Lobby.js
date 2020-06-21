@@ -1,14 +1,10 @@
 import { useContext } from 'react';
-import { GameServiceContext, PlayerServiceContext } from '../pages/index';
+import { PlayerServiceContext } from '../pages/index';
 import JoinTeam from './JoinTeam';
 
 const App = (props) => {
-  const { myGameState, host } = props;
+  const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const [gameState, gameSend] = useContext(GameServiceContext);
-  if (!host) {
-    gameState.context = myGameState;
-  }
   const { id, username, game, gameID } = playerState.context;
   const { players, teams } = game;
   const handleChangeTeam = async (team) => {
@@ -17,7 +13,7 @@ const App = (props) => {
 
   // host only
   const handleStartGame = () => {
-    gameSend({ type: 'START_GAME' });
+    playerSend({ type: 'START_GAME' });
   };
 
   return (

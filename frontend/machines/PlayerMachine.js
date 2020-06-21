@@ -55,7 +55,11 @@ const Socket = Machine({
                 }),
                 sendParent((ctx, event) => ({ type: 'SOCKET_CONNECTED', playerId: event.playerId })),
                 (ctx, event) =>
-                  event.socket.emit('event', { type: 'I_CONNECTED', playerId: event.playerId, username: ctx.username }),
+                  event.socket.emit('event', {
+                    type: 'PLAYER_CONNECTED',
+                    playerId: event.playerId,
+                    username: ctx.username,
+                  }),
               ],
             },
           },
@@ -67,23 +71,11 @@ const Socket = Machine({
               const { socket } = ctx;
 
               onEvent((event) => {
-                socket.emit(event.type, event);
+                socket.emit('event', event);
               });
 
-              // add an event type here to allow sending to PlayerMachine
-              const events = [
-                'UPDATE_LOBBY',
-                'INVITATION',
-                'INVITE_ACCEPTED',
-                'GETTING_GAME_READY',
-                'GAME_READY',
-                'GAME_UPDATE',
-              ];
-              events.forEach((type) => {
-                socket.on(type, (message = {}) => {
-                  const event = { type: type, ...message };
-                  callback({ type: 'TO_PARENT', event });
-                });
+              socket.on('event', (event = {}) => {
+                callback({ type: 'TO_PARENT', event });
               });
             },
           },
@@ -174,6 +166,11 @@ const PlayerMachine = Machine({
           actions: assign((ctx, event) => (ctx.username = event.username)),
         },
         CREATE_GAME: {
+          actions: [
+            send((ctx, event) => ({ type: 'CREATE_GAME', playerId: ctx.playerId, username: ctx.username }), {
+              to: 'socket',
+            }),
+          ],
           // target: 'creatingGame',
         },
         JOIN_GAME: {

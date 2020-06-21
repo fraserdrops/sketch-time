@@ -1,12 +1,10 @@
 import { useContext } from 'react';
 import Draw from '../components/Draw';
 import { PlayerServiceContext } from '../pages/index';
-import { GameServiceContext } from '../pages/index';
 
 const Turn = (props) => {
   const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const [gameState, gameSend] = useContext(GameServiceContext);
   const { id: userID, username, game, gameID, play } = playerState.context;
   const { word, playerDrawing } = play;
   const { turn } = playerState.context;
@@ -45,7 +43,7 @@ const Turn = (props) => {
             You're spectating {playerDrawing} draw {word}
           </p>
         )}
-        {host && <button onClick={() => gameSend({ type: 'END_TURN' })}>End turn</button>}
+        {host && <button onClick={() => playerSend({ type: 'END_TURN' })}>End turn</button>}
       </div>
       {drawing && <Draw allowDrawing={drawing} />}
       {!drawing && <Draw allowDrawing={drawing} />}

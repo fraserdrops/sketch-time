@@ -1,10 +1,9 @@
 import { useContext } from 'react';
-import { PlayerServiceContext, GameServiceContext } from '../pages/index';
+import { PlayerServiceContext } from '../pages/index';
 
 const BeforeTurn = (props) => {
   const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const [gameState, gameSend] = useContext(GameServiceContext);
 
   return (
     <div
@@ -25,10 +24,10 @@ const BeforeTurn = (props) => {
         {!host && <p>Waiting for host to adjudicate</p>}
         {host && (
           <div>
-            <button onClick={() => gameSend({ type: 'SUCCESSFUL' })}>Got it!</button>
+            <button onClick={() => playerSend({ type: 'SUCCESSFUL' })}>Got it!</button>
             <button
               style={{ background: '#ff2213', marginLeft: 15 }}
-              onClick={() => gameSend({ type: 'UNSUCCESSFUL' })}
+              onClick={() => playerSend({ type: 'UNSUCCESSFUL' })}
             >
               Didn't get it!
             </button>

@@ -1,11 +1,10 @@
 import { useContext } from 'react';
-import { PlayerServiceContext, GameServiceContext } from '../pages/index';
+import { PlayerServiceContext } from '../pages/index';
 
 const BeforeTurn = (props) => {
   const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const { id: userID, username, game, gameID, play, points } = playerState.context;
-  const [gameState, gameSend] = useContext(GameServiceContext);
 
   const { word } = play;
 
@@ -56,7 +55,7 @@ const BeforeTurn = (props) => {
           <p style={{ gridColumn: '2 / 3', gridRow: '3 / 4 ', margin: 0, fontWeight: 600 }}>{points.team2}</p>
         </div>
 
-        {host && <button onClick={() => gameSend({ type: 'START_TURN' })}>Start Turn</button>}
+        {host && <button onClick={() => playerSend({ type: 'START_TURN' })}>Start Turn</button>}
       </div>
 
       <div></div>
