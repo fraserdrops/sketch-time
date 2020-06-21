@@ -1,20 +1,11 @@
 const { assign } = require('@xstate/immer');
 const { actions, Machine, send, sendParent, spawn } = require('xstate');
-const { playerMachine } = require('./PlayerMachine');
 
 const { pure } = actions;
 // const wordList = require('../data/medium1');
 const wordList = ['chees'];
 
-var PusherClient = require('pusher-js');
-const fetch = require('node-fetch');
-
 const { APP_ID: appId, KEY: key, SECRET: secret, CLUSTER: cluster } = process.env;
-
-const pusherClient = new PusherClient(key, {
-  cluster: 'ap4',
-  forceTLS: true,
-});
 
 const { log } = actions;
 
@@ -24,89 +15,8 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const Pusher = require('pusher');
-const pusher = new Pusher({
-  appId,
-  key,
-  secret,
-  cluster,
-});
-
-const ClientMachine = Machine({
-  id: 'client',
-  initial: 'idle',
-  context: {
-    gameID: undefined,
-    pusher,
-  },
-  states: {
-    idle: {
-      on: {
-        CONNECT_TO_GAME: {
-          target: 'connected',
-          actions: assign((ctx, event) => (ctx.gameID = event.gameID)),
-        },
-      },
-    },
-    connected: {
-      invoke: {
-        id: 'socket',
-        src: (ctx, event) => (callback, onEvent) => {
-          const channel = pusherClient.subscribe(`${ctx.gameID}-host-events`);
-
-          channel.bind('events', async (event) => {
-            if (Array.isArray(event)) {
-              event.forEach((event) => {
-                callback({ type: 'TO_PARENT', event });
-              });
-            } else {
-              callback({ type: 'TO_PARENT', event });
-            }
-          });
-
-          onEvent(async (event) => {
-            console.log('send events to player', event);
-            pusher.trigger(`${event.gameID}-game-events`, 'events', event, (err) => {});
-          });
-
-          return () => pusher.unsubscribe(`${ctx.gameID}-host-events`);
-        },
-      },
-      on: {
-        // events from websocket to the game machine
-        TO_PARENT: {
-          actions: [
-            sendParent((ctx, event) => {
-              return event.event;
-            }),
-          ],
-        },
-        // events from the game machine to the websocket
-        '*': {
-          actions: send(
-            (ctx, event) => {
-              return {
-                ...event,
-              };
-            },
-            { to: 'socket' }
-          ),
-        },
-      },
-    },
-  },
-});
-
 const spawnPlayer = assign((ctx, event) => {
   ctx.game.players[event.playerID] = {
-    ref: spawn(
-      playerMachine.withContext({
-        ...playerMachine.context,
-        playerID: event.playerID,
-        gameID: event.gameID,
-        username: event.username,
-      })
-    ),
     playerID: event.playerID,
     username: event.username,
   };
@@ -144,12 +54,7 @@ const GameMachine = Machine(
           lastPlayed: undefined,
         },
       },
-      pusher,
       playerRefs: {},
-    },
-    invoke: {
-      id: 'client',
-      src: ClientMachine,
     },
     states: {
       ready: {
@@ -161,12 +66,9 @@ const GameMachine = Machine(
               assign((ctx, event) => {
                 ctx.hostID = event.playerID;
               }),
-              send((ctx, event) => ({ type: 'CONNECT_TO_GAME', gameID: event.gameID }), { to: 'client' }),
               spawnPlayer,
               sendJoinGame,
               'broadcastGameState',
-              // down here so that it's sent after the game and player are created
-              // (ctx, event) => event.res.json({ gameID: event.gameID }),
             ],
           },
         },
