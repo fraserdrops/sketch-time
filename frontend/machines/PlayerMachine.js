@@ -40,8 +40,8 @@ const Socket = Machine({
 
               const socket = io('http://localhost:8000');
               socket.on('connect', () => {
-                const playerId = socket.id;
-                callback({ type: 'CONNECT', playerId, socket });
+                const playerID = socket.id;
+                callback({ type: 'CONNECT', playerID, socket });
               });
             },
           },
@@ -50,14 +50,14 @@ const Socket = Machine({
               target: 'connected',
               actions: [
                 assign((ctx, event) => {
-                  ctx.playerId = event.playerId;
+                  ctx.playerID = event.playerID;
                   ctx.socket = event.socket;
                 }),
-                sendParent((ctx, event) => ({ type: 'SOCKET_CONNECTED', playerId: event.playerId })),
+                sendParent((ctx, event) => ({ type: 'SOCKET_CONNECTED', playerID: event.playerID })),
                 (ctx, event) =>
                   event.socket.emit('event', {
                     type: 'PLAYER_CONNECTED',
-                    playerId: event.playerId,
+                    playerID: event.playerID,
                     username: ctx.username,
                   }),
               ],
@@ -75,6 +75,7 @@ const Socket = Machine({
               });
 
               socket.on('event', (event = {}) => {
+                console.log(event);
                 callback({ type: 'TO_PARENT', event });
               });
             },
@@ -157,6 +158,7 @@ const PlayerMachine = Machine({
       on: {
         SOCKET_CONNECTED: {
           target: 'ready',
+          actions: [assign((ctx, event) => (ctx.playerID = event.playerID))],
         },
       },
     },
@@ -167,7 +169,7 @@ const PlayerMachine = Machine({
         },
         CREATE_GAME: {
           actions: [
-            send((ctx, event) => ({ type: 'CREATE_GAME', playerId: ctx.playerId, username: ctx.username }), {
+            send((ctx, event) => ({ type: 'CREATE_GAME', playerID: ctx.playerID, username: ctx.username }), {
               to: 'socket',
             }),
           ],
