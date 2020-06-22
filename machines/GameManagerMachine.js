@@ -20,17 +20,23 @@ const GameManagerMachine = Machine({
     src: (ctx, event) => (callback, onEvent) => {
       const { io } = ctx;
       io.on('connection', (socket) => {
-        console.log('connected');
-
         socket.on('event', (event) => {
           console.log('a user event', event);
           callback(event);
         });
       });
 
-      // onEvent((event) => {
-      //   io.emit('event', event);
-      // });
+      onEvent((event) => {
+        switch (event.type) {
+          case 'joinRoom': {
+            console.log('joinRoom', io.sockets.sockets[event.playerID]);
+            const socket = io.sockets.sockets[event.playerID];
+            socket.join(event.gameID);
+            socket.to(event.gameID).emit('event', { type: 'yoza' });
+          }
+        }
+        io.emit('event', event);
+      });
 
       // socket.on('event', (event = {}) => {
       //   callback({ type: 'TO_PARENT', event });
@@ -60,6 +66,7 @@ const GameManagerMachine = Machine({
                     to: (ctx, event) => ctx.games[gameID].ref,
                   }
                 ),
+                send((ctx, event) => ({ type: 'joinRoom', playerID: event.playerID, gameID }), { to: 'socket' }),
               ];
             }),
           ],
