@@ -1,5 +1,5 @@
 const { assign } = require('@xstate/immer');
-const { actions, Machine, send, sendParent, spawn, forwardTo } = require('xstate');
+const { assign: assignX, actions, Machine, send, sendParent, spawn, forwardTo } = require('xstate');
 const { gameMachine } = require('./GameMachine');
 const { pure, choose, log } = actions;
 
@@ -9,55 +9,76 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+const socketCallback = (ctx, event) => (callback, onEvent) => {
+  const { io } = ctx;
+  io.on('connection', (socket) => {
+    socket.on('event', (event) => {
+      console.log('a user event', event);
+      callback(event);
+    });
+  });
+
+  onEvent((event) => {
+    switch (event.type) {
+      case 'joinRoom': {
+        console.log('joinRoom', io.sockets.sockets[event.playerID]);
+        const socket = io.sockets.sockets[event.playerID];
+        socket.join(event.gameID);
+        socket.to(event.gameID).emit('event', { type: 'yoza' });
+      }
+      case 'sendRoom': {
+        socket.to(event.room).emit('event', event.payload);
+      }
+    }
+    io.emit('event', event);
+  });
+  callback('SOCKET_CONNECTED');
+  // socket.on('event', (event = {}) => {
+  //   callback({ type: 'TO_PARENT', event });
+  // });
+};
+
 const GameManagerMachine = Machine({
   id: 'gameManager',
-  initial: 'ready',
+  initial: 'initialising',
   context: {
     games: {},
+    socket: undefined,
   },
-  invoke: {
-    id: 'socket',
-    src: (ctx, event) => (callback, onEvent) => {
-      const { io } = ctx;
-      io.on('connection', (socket) => {
-        socket.on('event', (event) => {
-          console.log('a user event', event);
-          callback(event);
-        });
-      });
 
-      onEvent((event) => {
-        switch (event.type) {
-          case 'joinRoom': {
-            console.log('joinRoom', io.sockets.sockets[event.playerID]);
-            const socket = io.sockets.sockets[event.playerID];
-            socket.join(event.gameID);
-            socket.to(event.gameID).emit('event', { type: 'yoza' });
-          }
-        }
-        io.emit('event', event);
-      });
-
-      // socket.on('event', (event = {}) => {
-      //   callback({ type: 'TO_PARENT', event });
-      // });
-    },
-  },
   states: {
+    initialising: {
+      always: {
+        target: 'connecting',
+        actions: [
+          assignX({
+            socket: (ctx, event) => spawn(socketCallback(ctx, event)),
+          }),
+        ],
+      },
+    },
+    connecting: {
+      on: {
+        SOCKET_CONNECTED: {
+          target: 'ready',
+        },
+      },
+    },
     ready: {
+      entry: [() => console.log('ready')],
       on: {
         CREATE_GAME: {
           actions: [
             pure((ctx, event) => {
               let gameID = getRandomInt(1000, 9999);
-
+              console.log('yoza');
               while (ctx.games[gameID]) {
                 gameID = getRandomInt(1000, 9999);
               }
               return [
                 assign((ctx, event) => {
                   ctx.games[gameID] = {
-                    ref: spawn(gameMachine.withContext({ ...gameMachine.context, gameID })),
+                    ref: spawn(gameMachine.withContext({ ...gameMachine.context, gameID, socket: ctx.socket })),
                   };
                 }),
                 send(
@@ -66,7 +87,6 @@ const GameManagerMachine = Machine({
                     to: (ctx, event) => ctx.games[gameID].ref,
                   }
                 ),
-                send((ctx, event) => ({ type: 'joinRoom', playerID: event.playerID, gameID }), { to: 'socket' }),
               ];
             }),
           ],

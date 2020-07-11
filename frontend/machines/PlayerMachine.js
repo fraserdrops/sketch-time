@@ -71,6 +71,7 @@ const Socket = Machine({
               const { socket } = ctx;
 
               onEvent((event) => {
+                console.log('sending to socket');
                 socket.emit('event', event);
               });
 
@@ -169,6 +170,7 @@ const PlayerMachine = Machine({
         },
         CREATE_GAME: {
           actions: [
+            () => console.log('create'),
             send((ctx, event) => ({ type: 'CREATE_GAME', playerID: ctx.playerID, username: ctx.username }), {
               to: 'socket',
             }),
@@ -183,6 +185,14 @@ const PlayerMachine = Machine({
               ctx.host = false;
             }),
           ],
+        },
+      },
+    },
+    joiningGame: {
+      on: {
+        JOINED_GAMED: {
+          actions: [() => console.log('JOINED')],
+          target: 'lobby',
         },
       },
     },
@@ -256,150 +266,150 @@ const PlayerMachine = Machine({
     //     },
     //   },
     // },
-    // lobby: {
-    //   on: {
-    //     // '*': {
-    //     //   actions: saveLocal,
-    //     // },
-    //     START_GAME: {
-    //       target: 'playing',
-    //       actions: [assign((ctx, event) => (ctx.game = event.game))],
-    //     },
-    //     CHANGE_TEAM: {
-    //       actions: [
-    //         // saveLocal,
-    //         () => console.log('sdkljfds'),
-    //         send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM' }), {
-    //           to: (ctx) => ctx.sockets.remotePlayer,
-    //         }),
-    //       ],
-    //     },
-    //     GAME_UPDATE: {
-    //       actions: [assign((ctx, event) => (ctx.game = event.game))],
-    //     },
-    //   },
-    // },
-    // playing: {
-    //   type: 'parallel',
-    //   states: {
-    //     task: {
-    //       initial: 'idle',
-    //       states: {
-    //         idle: {},
-    //         drawing: {
-    //           entry: [() => console.log('IM In drawing state')],
-    //         },
-    //         guessing: {},
-    //         spectating: {},
-    //       },
-    //       on: {
-    //         PLAY_UPDATE: {
-    //           actions: [
-    //             send((ctx, event) => {
-    //               return event.playerEvents[ctx.id];
-    //             }),
-    //           ],
-    //         },
-    //         DRAW: {
-    //           target: '.drawing',
-    //           actions: [assign((ctx, event) => (ctx.play.word = event.word))],
-    //         },
-    //         GUESS: {
-    //           target: '.guessing',
-    //           actions: [assign((ctx, event) => (ctx.play.playerDrawing = event.playerDrawing))],
-    //         },
-    //         SPECTATE: {
-    //           target: '.spectating',
-    //           actions: [
-    //             assign((ctx, event) => {
-    //               ctx.play.word = event.word;
-    //               ctx.play.playerDrawing = event.playerDrawing;
-    //             }),
-    //           ],
-    //         },
-    //       },
-    //     },
-    //     turn: {
-    //       initial: 'beforeTurn',
-    //       states: {
-    //         beforeTurn: {
-    //           entry: [saveLocal],
+    lobby: {
+      on: {
+        // '*': {
+        //   actions: saveLocal,
+        // },
+        START_GAME: {
+          target: 'playing',
+          actions: [assign((ctx, event) => (ctx.game = event.game))],
+        },
+        CHANGE_TEAM: {
+          actions: [
+            // saveLocal,
+            () => console.log('sdkljfds'),
+            send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM' }), {
+              to: (ctx) => ctx.sockets.remotePlayer,
+            }),
+          ],
+        },
+        GAME_UPDATE: {
+          actions: [assign((ctx, event) => (ctx.game = event.game))],
+        },
+      },
+    },
+    playing: {
+      type: 'parallel',
+      states: {
+        task: {
+          initial: 'idle',
+          states: {
+            idle: {},
+            drawing: {
+              entry: [() => console.log('IM In drawing state')],
+            },
+            guessing: {},
+            spectating: {},
+          },
+          on: {
+            PLAY_UPDATE: {
+              actions: [
+                send((ctx, event) => {
+                  return event.playerEvents[ctx.id];
+                }),
+              ],
+            },
+            DRAW: {
+              target: '.drawing',
+              actions: [assign((ctx, event) => (ctx.play.word = event.word))],
+            },
+            GUESS: {
+              target: '.guessing',
+              actions: [assign((ctx, event) => (ctx.play.playerDrawing = event.playerDrawing))],
+            },
+            SPECTATE: {
+              target: '.spectating',
+              actions: [
+                assign((ctx, event) => {
+                  ctx.play.word = event.word;
+                  ctx.play.playerDrawing = event.playerDrawing;
+                }),
+              ],
+            },
+          },
+        },
+        turn: {
+          initial: 'beforeTurn',
+          states: {
+            beforeTurn: {
+              entry: [saveLocal],
 
-    //           on: {
-    //             PRE_TURN: {
-    //               target: 'preTurn',
-    //             },
-    //           },
-    //         },
-    //         preTurn: {
-    //           entry: [saveLocal],
-    //           invoke: {
-    //             src: (context) => (cb) => {
-    //               const interval = setInterval(() => {
-    //                 cb('TICK');
-    //               }, 1000 * context.preTurn.interval);
+              on: {
+                PRE_TURN: {
+                  target: 'preTurn',
+                },
+              },
+            },
+            preTurn: {
+              entry: [saveLocal],
+              invoke: {
+                src: (context) => (cb) => {
+                  const interval = setInterval(() => {
+                    cb('TICK');
+                  }, 1000 * context.preTurn.interval);
 
-    //               return () => {
-    //                 clearInterval(interval);
-    //               };
-    //             },
-    //           },
-    //           on: {
-    //             TICK: {
-    //               actions: assign((ctx, event) => {
-    //                 ctx.preTurn.countdown = ctx.preTurn.countdown - ctx.preTurn.interval;
-    //               }),
-    //             },
-    //             TURN: {
-    //               target: 'inTurn',
-    //               actions: assign((ctx, event) => {
-    //                 ctx.preTurn.countdown = ctx.preTurn.duration;
-    //               }),
-    //             },
-    //           },
-    //         },
-    //         inTurn: {
-    //           entry: [saveLocal],
-    //           invoke: {
-    //             src: (context) => (cb) => {
-    //               const interval = setInterval(() => {
-    //                 cb('TICK');
-    //               }, 1000 * context.turn.interval);
+                  return () => {
+                    clearInterval(interval);
+                  };
+                },
+              },
+              on: {
+                TICK: {
+                  actions: assign((ctx, event) => {
+                    ctx.preTurn.countdown = ctx.preTurn.countdown - ctx.preTurn.interval;
+                  }),
+                },
+                TURN: {
+                  target: 'inTurn',
+                  actions: assign((ctx, event) => {
+                    ctx.preTurn.countdown = ctx.preTurn.duration;
+                  }),
+                },
+              },
+            },
+            inTurn: {
+              entry: [saveLocal],
+              invoke: {
+                src: (context) => (cb) => {
+                  const interval = setInterval(() => {
+                    cb('TICK');
+                  }, 1000 * context.turn.interval);
 
-    //               return () => {
-    //                 clearInterval(interval);
-    //               };
-    //             },
-    //           },
-    //           on: {
-    //             TICK: {
-    //               actions: assign((ctx, event) => {
-    //                 ctx.turn.countdown = ctx.turn.countdown - ctx.turn.interval;
-    //               }),
-    //             },
-    //             END_OF_TURN: {
-    //               target: 'endOfTurn',
-    //               actions: assign((ctx, event) => {
-    //                 ctx.turn.countdown = ctx.turn.duration;
-    //               }),
-    //             },
-    //           },
-    //         },
-    //         endOfTurn: {
-    //           entry: [saveLocal],
-    //           on: {
-    //             BEFORE_TURN: {
-    //               target: 'beforeTurn',
-    //               actions: assign((ctx, event) => {
-    //                 ctx.points = event.points;
-    //               }),
-    //             },
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    // },
+                  return () => {
+                    clearInterval(interval);
+                  };
+                },
+              },
+              on: {
+                TICK: {
+                  actions: assign((ctx, event) => {
+                    ctx.turn.countdown = ctx.turn.countdown - ctx.turn.interval;
+                  }),
+                },
+                END_OF_TURN: {
+                  target: 'endOfTurn',
+                  actions: assign((ctx, event) => {
+                    ctx.turn.countdown = ctx.turn.duration;
+                  }),
+                },
+              },
+            },
+            endOfTurn: {
+              entry: [saveLocal],
+              on: {
+                BEFORE_TURN: {
+                  target: 'beforeTurn',
+                  actions: assign((ctx, event) => {
+                    ctx.points = event.points;
+                  }),
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   actions: {},
 });
