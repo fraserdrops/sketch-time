@@ -9,12 +9,6 @@ const { APP_ID: appId, KEY: key, SECRET: secret, CLUSTER: cluster } = process.en
 
 const { log } = actions;
 
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 const spawnPlayer = assign((ctx, event) => {
   ctx.game.players[event.playerID] = {
     playerID: event.playerID,
@@ -23,7 +17,11 @@ const spawnPlayer = assign((ctx, event) => {
 });
 
 const sendJoinGame = send(
-  (ctx, event) => ({ type: 'JOIN_GAME', gameID: event.gameID, playerID: event.playerID, host: true }),
+  (ctx, event) => ({
+    type: 'sendRoom',
+    room: playerID,
+    payload: { type: 'JOINED_GAME', gameState: ctx.game, gameID: event.gameID, playerID: event.playerID, host: true },
+  }),
   {
     to: (ctx, event) => ctx.game.players[ctx.hostID].ref,
   }
@@ -62,13 +60,18 @@ const GameMachine = Machine(
           CREATE_GAME: {
             target: 'lobby',
             actions: [
-              'generateGameID',
+              () => console.log('CREATING'),
               assign((ctx, event) => {
-                ctx.hostID = event.playerID;
+                // TODO - WORK OUT why immer isn't working
+                // ctx.hostID = event.playerID;
               }),
-              spawnPlayer,
-              sendJoinGame,
-              'broadcastGameState',
+              // spawnPlayer,
+              // send(
+              //   (ctx, event) => ({ type: 'joinRoom', playerID: event.playerID, gameID }),
+              //   (ctx) => ({ to: ctx.socket.ref })
+              // ),
+              // sendJoinGame,
+              // 'broadcastGameState',
             ],
           },
         },
@@ -275,7 +278,6 @@ const GameMachine = Machine(
           },
         };
       }),
-      generateGameID: assign((ctx, event) => (ctx.gameID = event.gameID)),
       changeTeam: assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)),
     },
     guards: {
