@@ -16,24 +16,44 @@ const spawnPlayer = assign((ctx, event) => {
   };
 });
 
+const sendGameCreated = send(
+  (ctx, event) => ({
+    type: 'sendRoom',
+    room: ctx.hostID,
+    payload: { type: 'JOINED_GAME', gameState: ctx.game, gameID: ctx.gameID, playerID: ctx.hostID, host: true },
+  }),
+  {
+    to: (ctx, event) => ctx.socket,
+  }
+);
+
 const sendJoinGame = send(
   (ctx, event) => ({
     type: 'sendRoom',
-    room: playerID,
-    payload: { type: 'JOINED_GAME', gameState: ctx.game, gameID: event.gameID, playerID: event.playerID, host: true },
+    room: event.playerID,
+    payload: { type: 'JOINED_GAME', gameState: ctx.game, gameID: ctx.gameID, playerID: event.playerID, host: false },
   }),
   {
-    to: (ctx, event) => ctx.game.players[ctx.hostID].ref,
+    to: (ctx, event) => ctx.socket,
   }
 );
+
+const joinRoom = send((ctx, event) => ({ type: 'joinRoom', playerID: event.playerID, gameID: ctx.gameID }), {
+  to: (ctx) => ctx.socket,
+});
+
+const hostJoin = send((ctx, event) => ({ type: 'joinRoom', playerID: ctx.hostID, gameID: ctx.gameID }), {
+  to: (ctx) => ctx.socket,
+});
 
 const GameMachine = Machine(
   {
     id: 'game',
-    initial: 'ready',
+    initial: 'init',
     context: {
       gameID: undefined,
       hostID: undefined,
+      count: 0,
       game: {
         players: {},
         teams: {},
@@ -55,39 +75,24 @@ const GameMachine = Machine(
       playerRefs: {},
     },
     states: {
-      ready: {
-        on: {
-          CREATE_GAME: {
-            target: 'lobby',
-            actions: [
-              () => console.log('CREATING'),
-              assign((ctx, event) => {
-                // TODO - WORK OUT why immer isn't working
-                // ctx.hostID = event.playerID;
-              }),
-              // spawnPlayer,
-              // send(
-              //   (ctx, event) => ({ type: 'joinRoom', playerID: event.playerID, gameID }),
-              //   (ctx) => ({ to: ctx.socket.ref })
-              // ),
-              // sendJoinGame,
-              // 'broadcastGameState',
-            ],
-          },
+      init: {
+        always: {
+          target: 'lobby',
+          actions: [hostJoin, sendGameCreated],
         },
       },
       lobby: {
         on: {
-          START_GAME: {
+          REQUEST_START_GAME: {
             target: 'inGame',
             actions: ['broadcastStartGame', 'derivePlayState'],
             cond: 'playersFromBothTeams',
           },
           CHANGE_TEAM: {
-            actions: [log(), assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)), 'broadcastGameState'],
+            actions: [assign((ctx, event) => (ctx.game.teams[event.playerID] = event.team)), 'broadcastGameState'],
           },
           PLAYER_JOIN: {
-            actions: [log(), spawnPlayer, sendJoinGame, 'broadcastGameState'],
+            actions: [log(), joinRoom, spawnPlayer, sendJoinGame, 'broadcastGameState'],
           },
           GET_GAME_STATE: {
             actions: [log(), 'broadcastGameState'],
@@ -236,34 +241,30 @@ const GameMachine = Machine(
           return send((ctx, event) => ({ ...playerEvent, gameID: ctx.gameID }), { to: ref });
         });
       }),
-      broadcastGameState: pure((context, event) => {
-        // I could in theory broadcast this to all players at once
-        // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(context.game.players).map(({ ref }) => {
-          return send(
-            (ctx, event) => ({
-              type: 'GAME_UPDATE',
-              gameID: ctx.gameID,
-              game: ctx.game,
-            }),
-            { to: ref }
-          );
-        });
-      }),
-      broadcastStartGame: pure((context, event) => {
-        // I could in theory broadcast this to all players at once
-        // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(context.game.players).map(({ ref }) => {
-          return send(
-            (ctx, event) => ({
-              type: 'START_GAME',
-              gameID: ctx.gameID,
-              game: ctx.game,
-            }),
-            { to: ref }
-          );
-        });
-      }),
+      broadcastGameState: send(
+        (ctx, event) => ({
+          type: 'sendRoom',
+          room: ctx.gameID,
+          payload: {
+            type: 'GAME_UPDATE',
+            gameID: ctx.gameID,
+            game: ctx.game,
+          },
+        }),
+        { to: (ctx) => ctx.socket }
+      ),
+
+      broadcastStartGame: send(
+        (ctx, event) => ({
+          type: 'sendRoom',
+          room: ctx.gameID,
+          payload: {
+            type: 'START_GAME',
+            game: ctx.game,
+          },
+        }),
+        { to: (ctx) => ctx.socket }
+      ),
       derivePlayState: assign((ctx, event) => {
         ctx.play = {
           team1: {

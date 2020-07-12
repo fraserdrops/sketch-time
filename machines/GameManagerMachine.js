@@ -14,25 +14,36 @@ const socketCallback = (ctx, event) => (callback, onEvent) => {
   io.on('connection', (socket) => {
     socket.on('event', (event) => {
       console.log('a user event', event);
-      callback(event);
+      if (event.gameID) {
+        console.log('game event');
+        callback({ type: 'GAME_EVENT', gameID: event.gameID, payload: event });
+      } else {
+        callback(event);
+      }
     });
   });
 
   onEvent((event) => {
+    console.log('event received', event);
     switch (event.type) {
       case 'joinRoom': {
-        console.log('joinRoom', io.sockets.sockets[event.playerID]);
         const socket = io.sockets.sockets[event.playerID];
         socket.join(event.gameID);
         socket.to(event.gameID).emit('event', { type: 'yoza' });
+        break;
       }
       case 'sendRoom': {
-        socket.to(event.room).emit('event', event.payload);
+        console.log('sendRoom', event);
+        io.in(event.room).emit('event', event.payload);
+        break;
+      }
+      default: {
+        io.emit('event', event);
       }
     }
-    io.emit('event', event);
   });
   callback('SOCKET_CONNECTED');
+  console.log('socket ready');
   // socket.on('event', (event = {}) => {
   //   callback({ type: 'TO_PARENT', event });
   // });
@@ -69,26 +80,42 @@ const GameManagerMachine = Machine({
       on: {
         CREATE_GAME: {
           actions: [
-            pure((ctx, event) => {
-              let gameID = getRandomInt(1000, 9999);
-              console.log('yoza');
-              while (ctx.games[gameID]) {
-                gameID = getRandomInt(1000, 9999);
-              }
-              return [
-                assign((ctx, event) => {
-                  ctx.games[gameID] = {
-                    ref: spawn(gameMachine.withContext({ ...gameMachine.context, gameID, socket: ctx.socket })),
-                  };
-                }),
-                send(
-                  (ctx, event) => ({ type: 'CREATE_GAME', gameID, playerID: event.playerID, username: event.username }),
-                  {
-                    to: (ctx, event) => ctx.games[gameID].ref,
-                  }
-                ),
-              ];
+            assignX({
+              games: (ctx, event) => {
+                let gameID = getRandomInt(1000, 9999);
+                while (ctx.games[gameID]) {
+                  gameID = getRandomInt(1000, 9999);
+                }
+                return {
+                  ...ctx.games,
+                  [gameID]: {
+                    ref: spawn(
+                      gameMachine.withContext({
+                        ...gameMachine.context,
+                        gameID,
+                        hostID: event.playerID,
+                        socket: ctx.socket,
+                        game: {
+                          players: {
+                            [event.playerID]: {
+                              playerID: event.playerID,
+                              username: event.username,
+                            },
+                          },
+                          teams: {},
+                        },
+                      })
+                    ),
+                  },
+                };
+              },
             }),
+          ],
+        },
+        GAME_EVENT: {
+          actions: [
+            () => console.log('handling game event'),
+            send((ctx, event) => ({ ...event.payload }), { to: (ctx, event) => ctx.games[event.gameID].ref }),
           ],
         },
         // '*': {
