@@ -13,7 +13,7 @@ const App = (props) => {
 
   // host only
   const handleStartGame = () => {
-    playerSend({ type: 'START_GAME' });
+    playerSend({ type: 'REQUEST_START_GAME' });
   };
 
   return (

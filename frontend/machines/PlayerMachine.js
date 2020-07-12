@@ -169,8 +169,9 @@ const PlayerMachine = Machine({
           actions: assign((ctx, event) => (ctx.username = event.username)),
         },
         CREATE_GAME: {
+          target: 'joiningGame',
           actions: [
-            () => console.log('create'),
+            assign((ctx, event) => (ctx.host = true)),
             send((ctx, event) => ({ type: 'CREATE_GAME', playerID: ctx.playerID, username: ctx.username }), {
               to: 'socket',
             }),
@@ -178,8 +179,19 @@ const PlayerMachine = Machine({
           // target: 'creatingGame',
         },
         JOIN_GAME: {
-          // target: 'joiningGame',
+          target: 'joiningGame',
           actions: [
+            send(
+              (ctx, event) => ({
+                type: 'PLAYER_JOIN',
+                playerID: ctx.playerID,
+                username: ctx.username,
+                gameID: event.gameID,
+              }),
+              {
+                to: 'socket',
+              }
+            ),
             assign((ctx, event) => {
               ctx.potentialGameID = event.gameID;
               ctx.host = false;
@@ -190,97 +202,48 @@ const PlayerMachine = Machine({
     },
     joiningGame: {
       on: {
-        JOINED_GAMED: {
-          actions: [() => console.log('JOINED')],
+        JOINED_GAME: {
+          actions: [
+            assign((ctx, event) => {
+              ctx.game = event.gameState;
+              ctx.gameID = event.gameID;
+            }),
+          ],
           target: 'lobby',
         },
       },
     },
-    // creatingGame: {
-    //   invoke: {
-    //     id: 'creatingGame',
-    //     src: (context, event) => {
-    //       return fetch('http://localhost:8000/game', {
-    //         method: 'POST',
-    //         headers: {
-    //           'Content-Type': 'application/json',
-    //         },
-    //         body: JSON.stringify({ type: 'CREATE_GAME', playerID: context.id, username: context.username }),
-    //       }).then((res) => {
-    //         if (res.ok) {
-    //           return res.json();
-    //         }
-    //       });
-    //     },
-    //     onDone: {
-    //       target: '#player.connectingToSockets',
-    //       actions: assign((ctx, event) => {
-    //         const { gameID } = event.data;
-    //         ctx.potentialGameID = gameID;
-    //         ctx.gameID = gameID;
-    //         ctx.host = true;
-    //       }),
-    //     },
-    //     onError: {
-    //       target: '#player.ready.errorCreatingGame',
-    //       actions: assign({ error: (context, event) => event.data }),
-    //     },
-    //   },
-    // },
-    // joiningGame: {
-    //   entry: [log()],
-    //   invoke: {
-    //     id: 'joiningGame',
-    //     src: (context, event) => {
-    //       return fetch('http://localhost:8000/game', {
-    //         method: 'POST',
-    //         headers: {
-    //           'Content-Type': 'application/json',
-    //         },
-    //         body: JSON.stringify({
-    //           type: 'PLAYER_JOIN',
-    //           gameID: context.potentialGameID,
-    //           playerID: context.id,
-    //           username: context.username,
-    //         }),
-    //       }).then((res) => {
-    //         console.log(res);
-    //         if (res.ok) {
-    //         } else {
-    //           throw new Error('FATALITY');
-    //         }
-    //       });
-    //     },
-    //     onError: {
-    //       target: '#player.ready.errorJoiningGame',
-    //       actions: console.log,
-    //     },
-    //     onDone: {
-    //       target: '#player.connectingToSockets',
-    //       actions: assign((ctx, event) => {
-    //         ctx.gameID = ctx.potentialGameID;
-    //         // const { gameID } = event.data;
-    //         // ctx.gameID = gameID;
-    //         // ctx.host = true;
-    //       }),
-    //     },
-    //   },
-    // },
     lobby: {
       on: {
         // '*': {
         //   actions: saveLocal,
         // },
+        REQUEST_START_GAME: {
+          actions: [
+            send(
+              (ctx, event) => ({
+                type: 'REQUEST_START_GAME',
+                gameID: ctx.gameID,
+              }),
+              {
+                to: 'socket',
+              }
+            ),
+          ],
+        },
         START_GAME: {
           target: 'playing',
-          actions: [assign((ctx, event) => (ctx.game = event.game))],
+          actions: [
+            assign((ctx, event) => {
+              ctx.game = event.game;
+            }),
+          ],
         },
         CHANGE_TEAM: {
           actions: [
-            // saveLocal,
-            () => console.log('sdkljfds'),
-            send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM' }), {
-              to: (ctx) => ctx.sockets.remotePlayer,
+            (ctx) => console.log('sdkljfds', ctx),
+            send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM', playerID: ctx.playerID }), {
+              to: 'socket',
             }),
           ],
         },
@@ -333,16 +296,26 @@ const PlayerMachine = Machine({
           initial: 'beforeTurn',
           states: {
             beforeTurn: {
-              entry: [saveLocal],
-
               on: {
+                START_TURN: {
+                  actions: [
+                    send(
+                      (ctx, event) => ({
+                        type: 'START_TURN',
+                        gameID: ctx.gameID,
+                      }),
+                      {
+                        to: 'socket',
+                      }
+                    ),
+                  ],
+                },
                 PRE_TURN: {
                   target: 'preTurn',
                 },
               },
             },
             preTurn: {
-              entry: [saveLocal],
               invoke: {
                 src: (context) => (cb) => {
                   const interval = setInterval(() => {
