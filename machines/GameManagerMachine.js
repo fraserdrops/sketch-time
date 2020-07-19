@@ -14,7 +14,10 @@ const socketCallback = (ctx, event) => (callback, onEvent) => {
   io.on('connection', (socket) => {
     socket.on('event', (event) => {
       console.log('a user event', event);
-      if (event.gameID) {
+      if (event.type === 'DRAW') {
+        console.log('DRAW', event);
+        socket.to(event.gameID).emit('event', { type: 'DRAW_EVENT', data: event.data });
+      } else if (event.gameID) {
         console.log('game event');
         callback({ type: 'GAME_EVENT', gameID: event.gameID, payload: event });
       } else {
