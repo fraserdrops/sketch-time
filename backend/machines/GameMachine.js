@@ -164,69 +164,54 @@ const GameMachine = Machine(
         const { currentTeam, currentPlayer } = ctx.play;
         ctx.play[currentTeam].lastPlayed = currentPlayer;
       }),
-      broadcastBeforeTurn: pure((ctx, event) => {
-        // I could in theory broadcast this to all players at once
-        // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(ctx.game.players).map(({ ref }) => {
-          return send(
-            {
-              type: 'BEFORE_TURN',
-              points: { team1: ctx.play.team1.points, team2: ctx.play.team2.points },
-            },
-            { to: ref }
-          );
-        });
-      }),
-      broadcastPreTurn: pure((context, event) => {
-        // I could in theory broadcast this to all players at once
-        // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(context.game.players).map(({ ref }) => {
-          return send(
-            (ctx, event) => ({
-              type: 'PRE_TURN',
-            }),
-            { to: ref }
-          );
-        });
-      }),
-      broadcastTurn: pure((context, event) => {
-        // I could in theory broadcast this to all players at once
-        // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(context.game.players).map(({ ref }) => {
-          return send(
-            (ctx, event) => ({
-              type: 'TURN',
-            }),
-            { to: ref }
-          );
-        });
-      }),
-      broadcastEndOfTurn: pure((context, event) => {
-        // I could in theory broadcast this to all players at once
-        // but instead I"m sending it through the player machine as an intermediary
-        return Object.values(context.game.players).map(({ ref }) => {
-          return send(
-            (ctx, event) => ({
-              type: 'END_OF_TURN',
-            }),
-            { to: ref }
-          );
-        });
-      }),
+      broadcastBeforeTurn: send(
+        (ctx, event) => ({
+          type: 'sendRoom',
+          room: ctx.gameID,
+          payload: {
+            type: 'BEFORE_TURN',
+            points: { team1: ctx.play.team1.points, team2: ctx.play.team2.points },
+          },
+        }),
+        { to: (ctx) => ctx.socket }
+      ),
+      // TODO: fix up these broadcasts
+      broadcastPreTurn: send(
+        (ctx, event) => ({
+          type: 'PRE_TURN',
+          room: ctx.gameID,
+        }),
+        { to: (ctx) => ctx.socket }
+      ),
+      broadcastTurn: send(
+        (ctx, event) => ({
+          type: 'TURN',
+          room: ctx.gameID,
+        }),
+        { to: (ctx) => ctx.socket }
+      ),
+      broadcastEndOfTurn: send(
+        (ctx, event) => ({
+          type: 'END_OF_TURN',
+          room: ctx.gameID,
+        }),
+        { to: (ctx) => ctx.socket }
+      ),
       broadcastPlayState: pure((ctx, event) => {
         const { currentPlayer, team1, team2, currentTeam, word } = ctx.play;
         const playerDrawing = ctx.game.players[currentPlayer].username;
 
         const currentTeamData = currentTeam === 'team2' ? team2 : team1;
         const otherTeamData = currentTeam === 'team2' ? team1 : team2;
-        return Object.values(ctx.game.players).map(({ ref, id }) => {
+        console.log(ctx.game);
+        return Object.values(ctx.game.players).map(({ ref, playerID }) => {
           let playerEvent;
-          if (id === currentPlayer) {
+          if (playerID === currentPlayer) {
             playerEvent = {
               type: 'DRAW',
               word,
             };
-          } else if (currentTeamData.members.includes(id)) {
+          } else if (currentTeamData.members.includes(playerID)) {
             playerEvent = {
               type: 'GUESS',
               playerDrawing: playerDrawing,
@@ -238,7 +223,10 @@ const GameMachine = Machine(
               word,
             };
           }
-          return send((ctx, event) => ({ ...playerEvent, gameID: ctx.gameID }), { to: ref });
+          return send(
+            (ctx, event) => ({ type: 'sendRoom', room: playerID, payload: { ...playerEvent, gameID: ctx.gameID } }),
+            { to: (ctx) => ctx.socket }
+          );
         });
       }),
       broadcastGameState: send(

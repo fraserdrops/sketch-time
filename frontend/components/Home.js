@@ -5,14 +5,14 @@ const Home = (props) => {
   const [playerState, playerSend] = useContext(PlayerServiceContext);
   const [gameID, setGameID] = useState('');
 
-  const { id, username } = playerState.context;
+  const { username } = playerState.context;
 
   const createGame = () => {
     playerSend('CREATE_GAME');
   };
 
   const joinGame = () => {
-    playerSend({ type: 'JOIN_GAME', gameID, playerID: id, username });
+    playerSend({ type: 'JOIN_GAME', gameID, username });
   };
 
   return (

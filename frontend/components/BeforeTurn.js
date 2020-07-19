@@ -4,7 +4,7 @@ import { PlayerServiceContext } from '../pages/index';
 const BeforeTurn = (props) => {
   const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const { id: userID, username, game, gameID, play, points } = playerState.context;
+  const { username, game, gameID, play, points } = playerState.context;
 
   const { word } = play;
 

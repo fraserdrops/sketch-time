@@ -8,7 +8,7 @@ import EndOfTurn from './EndOfTurn';
 const Game = (props) => {
   const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const { id: userID, username, game, gameID, play } = playerState.context;
+  const { username, game, gameID, play } = playerState.context;
   const { players, teams } = game;
   const { word } = play;
   console.log(host);

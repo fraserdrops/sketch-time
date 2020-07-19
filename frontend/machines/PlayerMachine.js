@@ -71,7 +71,7 @@ const Socket = Machine({
               const { socket } = ctx;
 
               onEvent((event) => {
-                console.log('sending to socket');
+                console.log('sending to socket', event);
                 socket.emit('event', event);
               });
 
@@ -113,7 +113,7 @@ const PlayerMachine = Machine({
   id: 'player',
   initial: 'initial',
   context: {
-    id: uuid(),
+    playerId: undefined,
     username: undefined,
     team: undefined,
     gameID: undefined,
@@ -241,7 +241,6 @@ const PlayerMachine = Machine({
         },
         CHANGE_TEAM: {
           actions: [
-            (ctx) => console.log('sdkljfds', ctx),
             send((ctx, event) => ({ ...event, gameID: ctx.gameID, type: 'CHANGE_TEAM', playerID: ctx.playerID }), {
               to: 'socket',
             }),
@@ -260,10 +259,38 @@ const PlayerMachine = Machine({
           states: {
             idle: {},
             drawing: {
-              entry: [() => console.log('IM In drawing state')],
+              on: {
+                DRAW: {
+                  actions: [
+                    assign((ctx, event) => (ctx.drawing = event.data)),
+                    send(
+                      (ctx, event) => ({
+                        type: 'DRAW',
+                        data: event.data,
+                        gameID: ctx.gameID,
+                      }),
+                      {
+                        to: 'socket',
+                      }
+                    ),
+                  ],
+                },
+              },
             },
-            guessing: {},
-            spectating: {},
+            guessing: {
+              on: {
+                DRAW_EVENT: {
+                  actions: [assign((ctx, event) => (ctx.drawing = event.data))],
+                },
+              },
+            },
+            spectating: {
+              on: {
+                DRAW_EVENT: {
+                  actions: [assign((ctx, event) => (ctx.drawing = event.data))],
+                },
+              },
+            },
           },
           on: {
             PLAY_UPDATE: {
@@ -342,7 +369,7 @@ const PlayerMachine = Machine({
               },
             },
             inTurn: {
-              entry: [saveLocal],
+              // entry: [saveLocal],
               invoke: {
                 src: (context) => (cb) => {
                   const interval = setInterval(() => {
@@ -360,6 +387,19 @@ const PlayerMachine = Machine({
                     ctx.turn.countdown = ctx.turn.countdown - ctx.turn.interval;
                   }),
                 },
+                END_TURN: {
+                  actions: [
+                    send(
+                      (ctx, event) => ({
+                        type: 'END_TURN',
+                        gameID: ctx.gameID,
+                      }),
+                      {
+                        to: 'socket',
+                      }
+                    ),
+                  ],
+                },
                 END_OF_TURN: {
                   target: 'endOfTurn',
                   actions: assign((ctx, event) => {
@@ -369,8 +409,34 @@ const PlayerMachine = Machine({
               },
             },
             endOfTurn: {
-              entry: [saveLocal],
+              // entry: [saveLocal],
               on: {
+                SUCCESSFUL: {
+                  actions: [
+                    send(
+                      (ctx, event) => ({
+                        type: 'SUCCESSFUL',
+                        gameID: ctx.gameID,
+                      }),
+                      {
+                        to: 'socket',
+                      }
+                    ),
+                  ],
+                },
+                UNSUCCESSFUL: {
+                  actions: [
+                    send(
+                      (ctx, event) => ({
+                        type: 'UNSUCCESSFUL',
+                        gameID: ctx.gameID,
+                      }),
+                      {
+                        to: 'socket',
+                      }
+                    ),
+                  ],
+                },
                 BEFORE_TURN: {
                   target: 'beforeTurn',
                   actions: assign((ctx, event) => {

@@ -5,7 +5,7 @@ import { PlayerServiceContext } from '../pages/index';
 const Turn = (props) => {
   const { host } = props;
   const [playerState, playerSend] = useContext(PlayerServiceContext);
-  const { id: userID, username, game, gameID, play } = playerState.context;
+  const { username, game, gameID, play } = playerState.context;
   const { word, playerDrawing } = play;
   const { turn } = playerState.context;
   const drawing = playerState.value.playing.task === 'drawing';
