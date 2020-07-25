@@ -1,6 +1,8 @@
 import { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { PlayerServiceContext } from '../pages/index';
 
+// to do
+// handle width and
 function drawLine({ ctx, x0, x1, y0, y1, color = 'black', emit, w, h, send }) {
   ctx.beginPath();
   ctx.moveTo(x0, y0);
@@ -59,12 +61,13 @@ const Draw = (props) => {
     let canvas = canvasRef.current;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    let canvCtx = canvas.getContext('2d');
-    canvCtx.lineJoin = 'round';
-    canvCtx.lineCap = 'round';
-    canvCtx.lineWidth = 5;
-    setCtx(canvCtx);
-  }, []);
+    let ctx = canvas.getContext('2d');
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 5;
+    playerSend({ type: 'SET_CANVAS_CTX', canvasCtx: ctx });
+    setCtx(ctx);
+  }, [playerSend]);
 
   useEffect(() => {
     if (playerState.context.drawing) {
@@ -76,49 +79,34 @@ const Draw = (props) => {
       drawLine({ ctx, x0: x0 * w, x1: x1 * w, y0: y0 * h, y1: y1 * h, color });
     }
   }, [playerState.context.drawing, ctx]);
-
+  console.log(playerState.value);
   function onMouseDown(e) {
-    setCurrent({ x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY });
+    console.log('send the mouse down event', {
+      type: 'MOUSE_DOWN',
+      current: { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY },
+    });
+    playerSend({
+      type: 'MOUSE_DOWN',
+      current: { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY },
+    });
   }
 
   function onMouseUp(e) {
-    if (!current) {
-      return;
-    }
-    if (e.clientX || e.touches[0]) {
-      drawLine({
-        ctx,
-        x0: current.x,
-        x1: e.clientX || e.touches[0].clientX,
-        y0: current.y,
-        y1: e.clientY || e.touches[0].clientY,
-        w: width,
-        h: height,
-        color: current.color,
-        emit: true,
-        send: playerSend,
-      });
-    }
-    setCurrent(undefined);
+    playerSend({
+      type: 'MOUSE_UP',
+      current:
+        e.clientX || e.touches[0]
+          ? { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY }
+          : undefined,
+    });
   }
 
   function onMouseMove(e) {
-    if (!current) {
-      return;
-    }
-    drawLine({
-      ctx,
-      x0: current.x,
-      x1: e.clientX || e.touches[0].clientX,
-      y0: current.y,
-      y1: e.clientY || e.touches[0].clientY,
-      w: width,
-      h: height,
-      color: current.color,
-      emit: true,
-      send: playerSend,
+    console.log('MOUSE_MOVE');
+    playerSend({
+      type: 'MOUSE_MOVE',
+      current: { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY },
     });
-    setCurrent({ x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY });
   }
 
   return (

@@ -109,6 +109,40 @@ const getGameState = send((ctx, event) => ({ type: 'GET_GAME_STATE', gameID: ctx
   to: (ctx) => ctx.sockets.remotePlayer,
 });
 
+const updateDrawingPosition = assign((ctx, event) => {
+  ctx.previous = ctx.current;
+  ctx.current = event.current;
+});
+
+function drawLine(ctx, event) {
+  const canvasCtx = ctx.canvasCtx;
+  if (ctx.current && ctx.previous) {
+    console.log('IM DRAWING');
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(ctx.previous.x, ctx.previous.y);
+    canvasCtx.lineTo(ctx.current.x, ctx.current.y);
+    canvasCtx.strokeStyle = 'black';
+    canvasCtx.lineWidth = 2;
+    canvasCtx.stroke();
+    canvasCtx.closePath();
+  }
+
+  // if (!emit) {
+  //   return;
+  // }
+
+  // send({
+  //   type: 'DRAW',
+  //   data: {
+  //     x0: x0 / w,
+  //     x1: x1 / w,
+  //     y0: y0 / h,
+  //     y1: y1 / h,
+  //     color,
+  //   },
+  // });
+}
+
 const PlayerMachine = Machine({
   id: 'player',
   initial: 'initial',
@@ -141,6 +175,7 @@ const PlayerMachine = Machine({
       duration: 60,
       interval: 1,
     },
+    canvasCtx: undefined,
   },
   invoke: {
     id: 'socket',
@@ -259,40 +294,78 @@ const PlayerMachine = Machine({
           states: {
             idle: {},
             drawing: {
-              on: {
-                DRAW: {
-                  actions: [
-                    assign((ctx, event) => (ctx.drawing = event.data)),
-                    send(
-                      (ctx, event) => ({
-                        type: 'DRAW',
-                        data: event.data,
-                        gameID: ctx.gameID,
-                      }),
-                      {
-                        to: 'socket',
-                      }
-                    ),
-                  ],
+              initial: 'idle',
+              states: {
+                idle: {
+                  on: {
+                    MOUSE_DOWN: {
+                      target: 'active',
+                      actions: [assign((ctx, event) => (ctx.current = event.current))],
+                    },
+                  },
+                },
+                active: {
+                  on: {
+                    MOUSE_MOVE: {
+                      actions: [
+                        updateDrawingPosition,
+                        drawLine,
+                        send(
+                          (ctx) => ({
+                            type: 'SEND_DRAW_EVENT',
+                            gameID: ctx.gameID,
+                            current: ctx.current,
+                            previous: ctx.previous,
+                          }),
+                          {
+                            to: 'socket',
+                          }
+                        ),
+                      ],
+                    },
+                    MOUSE_UP: {
+                      target: 'idle',
+                      actions: {
+                        actions: [
+                          updateDrawingPosition,
+                          drawLine,
+                          send(
+                            (ctx) => ({
+                              type: 'SEND_DRAW_EVENT',
+                              gameID: ctx.gameID,
+                              current: ctx.current,
+                              previous: ctx.previous,
+                            }),
+                            {
+                              to: 'socket',
+                            }
+                          ),
+                        ],
+                      },
+                    },
+                  },
                 },
               },
             },
             guessing: {
               on: {
                 DRAW_EVENT: {
-                  actions: [assign((ctx, event) => (ctx.drawing = event.data))],
+                  actions: [updateDrawingPosition, drawLine],
                 },
               },
             },
             spectating: {
               on: {
                 DRAW_EVENT: {
-                  actions: [assign((ctx, event) => (ctx.drawing = event.data))],
+                  actions: [updateDrawingPosition, drawLine],
                 },
               },
             },
           },
           on: {
+            '*': {
+              actions: [(ctx, event) => console.log('LKJLAKF', ctx, event)],
+            },
             PLAY_UPDATE: {
               actions: [
                 send((ctx, event) => {
@@ -314,6 +387,13 @@ const PlayerMachine = Machine({
                 assign((ctx, event) => {
                   ctx.play.word = event.word;
                   ctx.play.playerDrawing = event.playerDrawing;
+                }),
+              ],
+            },
+            SET_CANVAS_CTX: {
+              actions: [
+                assign((ctx, event) => {
+                  ctx.canvasCtx = event.canvasCtx;
                 }),
               ],
             },

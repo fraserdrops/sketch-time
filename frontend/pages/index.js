@@ -18,7 +18,7 @@ const App = (props) => {
     state: resolvedState,
   });
   const { player, host, gameID, id } = playerState.context;
-  console.log(playerState);
+
   useEffect(() => {
     // Always do navigations after the first render
     if (gameID) {
