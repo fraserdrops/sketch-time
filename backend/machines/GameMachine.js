@@ -2,8 +2,7 @@ const { assign } = require('@xstate/immer');
 const { actions, Machine, send, sendParent, spawn } = require('xstate');
 
 const { pure } = actions;
-// const wordList = require('../data/medium1');
-const wordList = ['chees'];
+const wordList = require('../data/medium1');
 
 const { APP_ID: appId, KEY: key, SECRET: secret, CLUSTER: cluster } = process.env;
 
@@ -203,7 +202,6 @@ const GameMachine = Machine(
 
         const currentTeamData = currentTeam === 'team2' ? team2 : team1;
         const otherTeamData = currentTeam === 'team2' ? team1 : team2;
-        console.log(ctx.game);
         return Object.values(ctx.game.players).map(({ ref, playerID }) => {
           let playerEvent;
           if (playerID === currentPlayer) {

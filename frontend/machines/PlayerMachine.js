@@ -105,9 +105,8 @@ const Socket = Machine({
     },
   },
 });
-const getGameState = send((ctx, event) => ({ type: 'GET_GAME_STATE', gameID: ctx.gameID, playerID: ctx.id }), {
-  to: (ctx) => ctx.sockets.remotePlayer,
-});
+
+const clearCanvas = (ctx) => ctx.canvasCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
 const updateDrawingPosition = assign((ctx, event) => {
   ctx.previous = ctx.current;
@@ -117,7 +116,6 @@ const updateDrawingPosition = assign((ctx, event) => {
 function drawLine(ctx, event) {
   const canvasCtx = ctx.canvasCtx;
   if (ctx.current && ctx.previous) {
-    console.log('IM DRAWING');
     canvasCtx.beginPath();
     canvasCtx.moveTo(ctx.previous.x, ctx.previous.y);
     canvasCtx.lineTo(ctx.current.x, ctx.current.y);
@@ -126,21 +124,6 @@ function drawLine(ctx, event) {
     canvasCtx.stroke();
     canvasCtx.closePath();
   }
-
-  // if (!emit) {
-  //   return;
-  // }
-
-  // send({
-  //   type: 'DRAW',
-  //   data: {
-  //     x0: x0 / w,
-  //     x1: x1 / w,
-  //     y0: y0 / h,
-  //     y1: y1 / h,
-  //     color,
-  //   },
-  // });
 }
 
 const PlayerMachine = Machine({
@@ -288,6 +271,7 @@ const PlayerMachine = Machine({
     },
     playing: {
       type: 'parallel',
+      // exit: [clearCanvas],
       states: {
         task: {
           initial: 'idle',

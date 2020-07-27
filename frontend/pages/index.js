@@ -19,12 +19,12 @@ const App = (props) => {
   });
   const { player, host, gameID, id } = playerState.context;
 
-  useEffect(() => {
-    // Always do navigations after the first render
-    if (gameID) {
-      router.push(`/?gameID=${gameID}&playerID=${id}`, undefined, { shallow: true });
-    }
-  }, [gameID]);
+  // useEffect(() => {
+  //   // Always do navigations after the first render
+  //   if (gameID) {
+  //     router.push(`/?gameID=${gameID}&playerID=${id}`, undefined, { shallow: true });
+  //   }
+  // }, [gameID]);
   // useEffect(() => {
   //   if (gameID) {
   //     window.localStorage.setItem(gameID + '^' + id, JSON.stringify(playerState));
@@ -38,18 +38,6 @@ const App = (props) => {
   //     console.log(playerState.value);
   //   }
   // }, []);
-
-  const gameSend = async (event) => {
-    console.log('sending to game');
-    fetch('http://localhost:8000/game', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ gameID: playerState.context.gameID, ...event }),
-    });
-  };
 
   return (
     <PlayerServiceContext.Provider value={[playerState, send]}>

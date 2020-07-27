@@ -49,22 +49,22 @@ function MyApp({ Component, pageProps }) {
 
   const router = useRouter();
   const [resolvedState, setResolvedState] = useState(undefined);
-  useEffect(() => {
-    // the query object doesn't populate on the first render
-    if (router.query.gameID) {
-      const savedGame = window.localStorage.getItem(router.query.gameID + '^' + router.query.playerID);
-      if (savedGame) {
-        const stateDefinition = JSON.parse(savedGame);
-        setResolvedState(stateDefinition);
-      } else {
-        setResolvedState(null);
-      }
-    } else if (!router.asPath.includes('gameID=')) {
-      // if it includes gameID, wait for the second render
-      // otherwise if there isn't there's no state to load
-      setResolvedState(null);
-    }
-  }, [router.query.gameID]);
+  // useEffect(() => {
+  //   // the query object doesn't populate on the first render
+  //   if (router.query.gameID) {
+  //     const savedGame = window.localStorage.getItem(router.query.gameID + '^' + router.query.playerID);
+  //     if (savedGame) {
+  //       const stateDefinition = JSON.parse(savedGame);
+  //       setResolvedState(stateDefinition);
+  //     } else {
+  //       setResolvedState(null);
+  //     }
+  //   } else if (!router.asPath.includes('gameID=')) {
+  //     // if it includes gameID, wait for the second render
+  //     // otherwise if there isn't there's no state to load
+  //     setResolvedState(null);
+  //   }
+  // }, [router.query.gameID]);
 
   return (
     <div
@@ -82,8 +82,7 @@ function MyApp({ Component, pageProps }) {
           key='viewport'
         />
       </Head>
-      {resolvedState !== undefined && <Component {...pageProps} resolvedState={resolvedState} />}
-      {!resolvedState && <div />}
+      <Component {...pageProps} resolvedState={resolvedState} />
     </div>
   );
 }
