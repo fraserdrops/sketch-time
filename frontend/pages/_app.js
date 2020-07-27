@@ -1,14 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Pusher from 'pusher-js';
 import React, { useEffect, useRef, useState } from 'react';
-import { State } from 'xstate';
 import '../styles.css';
-
-export const pusher = new Pusher('3a40fa337322e97d8d0c', {
-  cluster: 'ap4',
-  forceTLS: true,
-});
 
 function MyApp({ Component, pageProps }) {
   const ref = useRef();
