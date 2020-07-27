@@ -37,8 +37,11 @@ const Socket = Machine({
             id: 'connectToSocket',
             src: (ctx, event) => (callback, onEvent) => {
               const { io } = ctx;
-
-              const socket = io('http://localhost:8000');
+              const host =
+                process.env.NODE_ENV === 'production'
+                  ? 'https://sketch-time-server.herokuapp.com/'
+                  : 'http://localhost:8000';
+              const socket = io(host);
               socket.on('connect', () => {
                 const playerID = socket.id;
                 callback({ type: 'CONNECT', playerID, socket });
