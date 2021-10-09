@@ -1,10 +1,15 @@
-const { assign } = require('@xstate/immer');
-const { actions, Machine, send, sendParent, spawn } = require('xstate');
+const { assign } = require("@xstate/immer");
+const { actions, Machine, send, sendParent, spawn } = require("xstate");
 
 const { pure } = actions;
-const wordList = require('../data/medium1');
+const wordList = require("../data/medium1");
 
-const { APP_ID: appId, KEY: key, SECRET: secret, CLUSTER: cluster } = process.env;
+const {
+  APP_ID: appId,
+  KEY: key,
+  SECRET: secret,
+  CLUSTER: cluster,
+} = process.env;
 
 const { log } = actions;
 
@@ -17,9 +22,15 @@ const spawnPlayer = assign((ctx, event) => {
 
 const sendGameCreated = send(
   (ctx, event) => ({
-    type: 'sendRoom',
+    type: "sendRoom",
     room: ctx.hostID,
-    payload: { type: 'JOINED_GAME', gameState: ctx.game, gameID: ctx.gameID, playerID: ctx.hostID, host: true },
+    payload: {
+      type: "JOINED_GAME",
+      gameState: ctx.game,
+      gameID: ctx.gameID,
+      playerID: ctx.hostID,
+      host: true,
+    },
   }),
   {
     to: (ctx, event) => ctx.socket,
@@ -28,27 +39,47 @@ const sendGameCreated = send(
 
 const sendJoinGame = send(
   (ctx, event) => ({
-    type: 'sendRoom',
+    type: "sendRoom",
     room: event.playerID,
-    payload: { type: 'JOINED_GAME', gameState: ctx.game, gameID: ctx.gameID, playerID: event.playerID, host: false },
+    payload: {
+      type: "JOINED_GAME",
+      gameState: ctx.game,
+      gameID: ctx.gameID,
+      playerID: event.playerID,
+      host: false,
+    },
   }),
   {
     to: (ctx, event) => ctx.socket,
   }
 );
 
-const joinRoom = send((ctx, event) => ({ type: 'joinRoom', playerID: event.playerID, gameID: ctx.gameID }), {
-  to: (ctx) => ctx.socket,
-});
+const joinRoom = send(
+  (ctx, event) => ({
+    type: "joinRoom",
+    playerID: event.playerID,
+    gameID: ctx.gameID,
+  }),
+  {
+    to: (ctx) => ctx.socket,
+  }
+);
 
-const hostJoin = send((ctx, event) => ({ type: 'joinRoom', playerID: ctx.hostID, gameID: ctx.gameID }), {
-  to: (ctx) => ctx.socket,
-});
+const hostJoin = send(
+  (ctx, event) => ({
+    type: "joinRoom",
+    playerID: ctx.hostID,
+    gameID: ctx.gameID,
+  }),
+  {
+    to: (ctx) => ctx.socket,
+  }
+);
 
 const GameMachine = Machine(
   {
-    id: 'game',
-    initial: 'init',
+    id: "game",
+    initial: "init",
     context: {
       gameID: undefined,
       hostID: undefined,
@@ -76,66 +107,83 @@ const GameMachine = Machine(
     states: {
       init: {
         always: {
-          target: 'lobby',
+          target: "lobby",
           actions: [hostJoin, sendGameCreated],
         },
       },
       lobby: {
         on: {
           REQUEST_START_GAME: {
-            target: 'inGame',
-            actions: ['broadcastStartGame', 'derivePlayState'],
-            cond: 'playersFromBothTeams',
+            target: "inGame",
+            actions: ["broadcastStartGame", "derivePlayState"],
+            cond: "playersFromBothTeams",
           },
           CHANGE_TEAM: {
-            actions: [assign((ctx, event) => (ctx.game.teams[event.playerID] = event.team)), 'broadcastGameState'],
+            actions: [
+              assign(
+                (ctx, event) => (ctx.game.teams[event.playerID] = event.team)
+              ),
+              "broadcastGameState",
+            ],
           },
           PLAYER_JOIN: {
-            actions: [log(), joinRoom, spawnPlayer, sendJoinGame, 'broadcastGameState'],
+            actions: [
+              log(),
+              joinRoom,
+              spawnPlayer,
+              sendJoinGame,
+              "broadcastGameState",
+            ],
           },
           GET_GAME_STATE: {
-            actions: [log(), 'broadcastGameState'],
+            actions: [log(), "broadcastGameState"],
           },
         },
       },
       inGame: {
-        initial: 'beforeTurn',
+        initial: "beforeTurn",
         states: {
           beforeTurn: {
-            entry: ['broadcastBeforeTurn'],
+            entry: ["broadcastBeforeTurn"],
             on: {
               START_TURN: {
-                target: 'preTurn',
-                actions: ['assignWord', 'setTeam', 'assignNextPlayer', 'broadcastPlayState', 'broadcastPreTurn'],
+                target: "preTurn",
+                actions: [
+                  "assignWord",
+                  "setTeam",
+                  "assignNextPlayer",
+                  "broadcastPlayState",
+                  "broadcastPreTurn",
+                ],
               },
             },
           },
           preTurn: {
             after: {
-              100: 'playing',
+              15000: "playing",
             },
           },
           playing: {
-            entry: ['broadcastTurn'],
+            entry: ["broadcastTurn"],
             after: {
-              60000: 'endOfTurn',
+              60000: "endOfTurn",
             },
             on: {
               END_TURN: {
-                target: 'endOfTurn',
+                target: "endOfTurn",
               },
             },
           },
           endOfTurn: {
-            entry: ['broadcastEndOfTurn'],
+            entry: ["broadcastEndOfTurn"],
             on: {
               SUCCESSFUL: {
-                target: 'beforeTurn',
-                actions: ['cleanupTurn', 'tallyPointsSuccess'],
+                target: "beforeTurn",
+                actions: ["cleanupTurn", "tallyPointsSuccess"],
               },
               UNSUCCESSFUL: {
-                target: 'beforeTurn',
-                actions: ['cleanupTurn'],
+                target: "beforeTurn",
+                actions: ["cleanupTurn"],
               },
             },
           },
@@ -148,16 +196,24 @@ const GameMachine = Machine(
       tallyPointsSuccess: assign((ctx, event) => {
         ctx.play[ctx.play.currentTeam].points += 1;
       }),
-      assignWord: assign((ctx, event) => (ctx.play.word = wordList[Math.floor(Math.random() * wordList.length)])),
+      assignWord: assign(
+        (ctx, event) =>
+          (ctx.play.word =
+            wordList[Math.floor(Math.random() * wordList.length)])
+      ),
       assignNextPlayer: assign((ctx, event) => {
         const { members, lastPlayed } = ctx.play[ctx.play.currentTeam];
         const lastPlayedIndex = members.indexOf(lastPlayed);
-        const nextPlayerIndex = lastPlayedIndex + 1 >= members.length ? 0 : lastPlayedIndex + 1;
+        const nextPlayerIndex =
+          lastPlayedIndex + 1 >= members.length ? 0 : lastPlayedIndex + 1;
         const nextPlayer = members[nextPlayerIndex];
         ctx.play.currentPlayer = nextPlayer;
       }),
       setTeam: assign((ctx, event) => {
-        ctx.play.currentTeam = ctx.play.currentTeam && ctx.play.currentTeam === 'team1' ? 'team2' : 'team1';
+        ctx.play.currentTeam =
+          ctx.play.currentTeam && ctx.play.currentTeam === "team1"
+            ? "team2"
+            : "team1";
       }),
       cleanupTurn: assign((ctx, event) => {
         const { currentTeam, currentPlayer } = ctx.play;
@@ -165,11 +221,14 @@ const GameMachine = Machine(
       }),
       broadcastBeforeTurn: send(
         (ctx, event) => ({
-          type: 'sendRoom',
+          type: "sendRoom",
           room: ctx.gameID,
           payload: {
-            type: 'BEFORE_TURN',
-            points: { team1: ctx.play.team1.points, team2: ctx.play.team2.points },
+            type: "BEFORE_TURN",
+            points: {
+              team1: ctx.play.team1.points,
+              team2: ctx.play.team2.points,
+            },
           },
         }),
         { to: (ctx) => ctx.socket }
@@ -177,21 +236,21 @@ const GameMachine = Machine(
       // TODO: fix up these broadcasts
       broadcastPreTurn: send(
         (ctx, event) => ({
-          type: 'PRE_TURN',
+          type: "PRE_TURN",
           room: ctx.gameID,
         }),
         { to: (ctx) => ctx.socket }
       ),
       broadcastTurn: send(
         (ctx, event) => ({
-          type: 'TURN',
+          type: "TURN",
           room: ctx.gameID,
         }),
         { to: (ctx) => ctx.socket }
       ),
       broadcastEndOfTurn: send(
         (ctx, event) => ({
-          type: 'END_OF_TURN',
+          type: "END_OF_TURN",
           room: ctx.gameID,
         }),
         { to: (ctx) => ctx.socket }
@@ -200,39 +259,43 @@ const GameMachine = Machine(
         const { currentPlayer, team1, team2, currentTeam, word } = ctx.play;
         const playerDrawing = ctx.game.players[currentPlayer].username;
 
-        const currentTeamData = currentTeam === 'team2' ? team2 : team1;
-        const otherTeamData = currentTeam === 'team2' ? team1 : team2;
+        const currentTeamData = currentTeam === "team2" ? team2 : team1;
+        const otherTeamData = currentTeam === "team2" ? team1 : team2;
         return Object.values(ctx.game.players).map(({ ref, playerID }) => {
           let playerEvent;
           if (playerID === currentPlayer) {
             playerEvent = {
-              type: 'DRAW',
+              type: "DRAW",
               word,
             };
           } else if (currentTeamData.members.includes(playerID)) {
             playerEvent = {
-              type: 'GUESS',
+              type: "GUESS",
               playerDrawing: playerDrawing,
             };
           } else {
             playerEvent = {
-              type: 'SPECTATE',
+              type: "SPECTATE",
               playerDrawing: playerDrawing,
               word,
             };
           }
           return send(
-            (ctx, event) => ({ type: 'sendRoom', room: playerID, payload: { ...playerEvent, gameID: ctx.gameID } }),
+            (ctx, event) => ({
+              type: "sendRoom",
+              room: playerID,
+              payload: { ...playerEvent, gameID: ctx.gameID },
+            }),
             { to: (ctx) => ctx.socket }
           );
         });
       }),
       broadcastGameState: send(
         (ctx, event) => ({
-          type: 'sendRoom',
+          type: "sendRoom",
           room: ctx.gameID,
           payload: {
-            type: 'GAME_UPDATE',
+            type: "GAME_UPDATE",
             gameID: ctx.gameID,
             game: ctx.game,
           },
@@ -242,10 +305,10 @@ const GameMachine = Machine(
 
       broadcastStartGame: send(
         (ctx, event) => ({
-          type: 'sendRoom',
+          type: "sendRoom",
           room: ctx.gameID,
           payload: {
-            type: 'START_GAME',
+            type: "START_GAME",
             game: ctx.game,
           },
         }),
@@ -254,29 +317,35 @@ const GameMachine = Machine(
       derivePlayState: assign((ctx, event) => {
         ctx.play = {
           team1: {
-            members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 1'),
+            members: Object.keys(ctx.game.teams).filter(
+              (userID) => ctx.game.teams[userID] === "Team 1"
+            ),
             lastPlayed: undefined,
             points: 0,
           },
           team2: {
-            members: Object.keys(ctx.game.teams).filter((userID) => ctx.game.teams[userID] === 'Team 2'),
+            members: Object.keys(ctx.game.teams).filter(
+              (userID) => ctx.game.teams[userID] === "Team 2"
+            ),
             lastPlayed: undefined,
             points: 0,
           },
         };
       }),
-      changeTeam: assign((ctx, event) => (ctx.game.teams[event.userID] = event.team)),
+      changeTeam: assign(
+        (ctx, event) => (ctx.game.teams[event.userID] = event.team)
+      ),
     },
     guards: {
       playersFromBothTeams: (ctx, event) => {
         let team1 = false;
         let team2 = false;
         Object.values(ctx.game.teams).forEach((team) => {
-          if (team === 'Team 1') {
+          if (team === "Team 1") {
             team1 = true;
           }
 
-          if (team === 'Team 2') {
+          if (team === "Team 2") {
             team2 = true;
           }
         });
