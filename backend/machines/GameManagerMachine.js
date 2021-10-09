@@ -1,6 +1,14 @@
-const { assign } = require('@xstate/immer');
-const { assign: assignX, actions, Machine, send, sendParent, spawn, forwardTo } = require('xstate');
-const { gameMachine } = require('./GameMachine');
+const { assign } = require("@xstate/immer");
+const {
+  assign: assignX,
+  actions,
+  Machine,
+  send,
+  sendParent,
+  spawn,
+  forwardTo,
+} = require("xstate");
+const { gameMachine } = require("./GameMachine");
 const { pure, choose, log } = actions;
 
 function getRandomInt(min, max) {
@@ -11,14 +19,14 @@ function getRandomInt(min, max) {
 
 const socketCallback = (ctx, event) => (callback, onEvent) => {
   const { io } = ctx;
-  io.on('connection', (socket) => {
-    socket.on('event', (event) => {
-      console.log('a user event', event);
-      if (event.type === 'SEND_DRAW_EVENT') {
-        io.in(event.gameID).emit('event', { ...event, type: 'DRAW_EVENT' });
+  io.on("connection", (socket) => {
+    socket.on("event", (event) => {
+      console.log("a user event", event);
+      if (event.type === "SEND_DRAW_EVENT") {
+        io.in(event.gameID).emit("event", { ...event, type: "DRAW_EVENT" });
       } else if (event.gameID) {
-        console.log('game event');
-        callback({ type: 'GAME_EVENT', gameID: event.gameID, payload: event });
+        console.log("game event");
+        callback({ type: "GAME_EVENT", gameID: event.gameID, payload: event });
       } else {
         callback(event);
       }
@@ -26,34 +34,34 @@ const socketCallback = (ctx, event) => (callback, onEvent) => {
   });
 
   onEvent((event) => {
-    console.log('event received', event);
+    console.log("event received", event);
     switch (event.type) {
-      case 'joinRoom': {
+      case "joinRoom": {
         const socket = io.sockets.sockets[event.playerID];
         socket.join(event.gameID);
-        socket.to(event.gameID).emit('event', { type: 'yoza' });
+        socket.to(event.gameID).emit("event", { type: "yoza" });
         break;
       }
-      case 'sendRoom': {
-        console.log('sendRoom', event);
-        io.in(event.room).emit('event', event.payload);
+      case "sendRoom": {
+        console.log("sendRoom", event);
+        io.in(event.room).emit("event", event.payload);
         break;
       }
       default: {
-        io.emit('event', event);
+        io.emit("event", event);
       }
     }
   });
-  callback('SOCKET_CONNECTED');
-  console.log('socket ready');
+  callback("SOCKET_CONNECTED");
+  console.log("socket ready");
   // socket.on('event', (event = {}) => {
   //   callback({ type: 'TO_PARENT', event });
   // });
 };
 
 const GameManagerMachine = Machine({
-  id: 'gameManager',
-  initial: 'initialising',
+  id: "gameManager",
+  initial: "initialising",
   context: {
     games: {},
     socket: undefined,
@@ -62,7 +70,7 @@ const GameManagerMachine = Machine({
   states: {
     initialising: {
       always: {
-        target: 'connecting',
+        target: "connecting",
         actions: [
           assignX({
             socket: (ctx, event) => spawn(socketCallback(ctx, event)),
@@ -73,12 +81,12 @@ const GameManagerMachine = Machine({
     connecting: {
       on: {
         SOCKET_CONNECTED: {
-          target: 'ready',
+          target: "ready",
         },
       },
     },
     ready: {
-      entry: [() => console.log('ready')],
+      entry: [() => console.log("ready")],
       on: {
         CREATE_GAME: {
           actions: [
@@ -114,12 +122,33 @@ const GameManagerMachine = Machine({
             }),
           ],
         },
-        GAME_EVENT: {
-          actions: [
-            () => console.log('handling game event'),
-            send((ctx, event) => ({ ...event.payload }), { to: (ctx, event) => ctx.games[event.gameID].ref }),
-          ],
-        },
+        GAME_EVENT: [
+          {
+            cond: (ctx, event) => Boolean(ctx.games[event.gameID]),
+            actions: [
+              () => console.log("handling game event"),
+              send((ctx, event) => ({ ...event.payload }), {
+                to: (ctx, event) => ctx.games[event.gameID].ref,
+              }),
+            ],
+          },
+          {
+            actions: [
+              send(
+                (ctx, event) => ({
+                  type: "sendRoom",
+                  room: event.payload.playerID,
+                  payload: {
+                    type: "INVALID_GAME_CODE",
+                  },
+                }),
+                {
+                  to: (ctx, event) => ctx.socket,
+                }
+              ),
+            ],
+          },
+        ],
         // '*': {
         //   actions: [
         //     choose([

@@ -243,6 +243,10 @@ const PlayerMachine = Machine(
             ],
           },
         },
+        states: {
+          idle: {},
+          errorJoiningGame: {},
+        },
       },
       joiningGame: {
         on: {
@@ -254,6 +258,9 @@ const PlayerMachine = Machine(
               }),
             ],
             target: "lobby",
+          },
+          INVALID_GAME_CODE: {
+            target: "ready.errorJoiningGame",
           },
         },
       },
