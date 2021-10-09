@@ -1,12 +1,12 @@
-const express = require('express');
-require('dotenv').config();
+const express = require("express");
+require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 8000;
-const { gameManagerMachine } = require('./machines/GameManagerMachine');
-const { interpret } = require('xstate');
+const { gameManagerMachine } = require("./machines/GameManagerMachine");
+const { interpret } = require("xstate");
 
-var http = require('http').createServer(app);
-var io = require('socket.io')(http, { origins: 'http://localhost:3000 https://fun.frasermcintosh.com' });
+var http = require("http").createServer(app);
+var io = require("socket.io")(http);
 // io.origins((origin, callback) => {
 //   console.log('HLKJALD', origin);
 //   if (origin !== 'http://localhost:3000') {
@@ -15,10 +15,14 @@ var io = require('socket.io')(http, { origins: 'http://localhost:3000 https://fu
 //   callback(null, true);
 // });
 
-const service = interpret(gameManagerMachine.withContext({ ...gameManagerMachine.context, io }))
+const service = interpret(
+  gameManagerMachine.withContext({ ...gameManagerMachine.context, io })
+)
   .onTransition((state) => {
-    console.log('service', state.value);
+    console.log("service", state.value);
   })
   .start();
 
-http.listen(port, () => console.log(`Example app listening at http://localhost:${port}`));
+http.listen(port, () =>
+  console.log(`Example app listening at http://localhost:${port}`)
+);
